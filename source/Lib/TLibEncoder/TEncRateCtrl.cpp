@@ -32,7 +32,7 @@
  */
 
 /** \file     TEncRateCtrl.cpp
-    \brief    Rate control manager class
+	\brief    Rate control manager class
 */
 #include "TEncRateCtrl.h"
 #include "../TLibCommon/TComPic.h"
@@ -93,28 +93,28 @@ Void TEncRCSeq::create( Int totalFrames, Int targetBitrate, Int frameRate, Int G
   m_seqTargetBpp = (Double)m_targetRate / (Double)m_frameRate / (Double)m_numberOfPixel;
   if ( m_seqTargetBpp < 0.03 )
   {
-    m_alphaUpdate = 0.01;
-    m_betaUpdate  = 0.005;
+	m_alphaUpdate = 0.01;
+	m_betaUpdate  = 0.005;
   }
   else if ( m_seqTargetBpp < 0.08 )
   {
-    m_alphaUpdate = 0.05;
-    m_betaUpdate  = 0.025;
+	m_alphaUpdate = 0.05;
+	m_betaUpdate  = 0.025;
   }
   else if ( m_seqTargetBpp < 0.2 )
   {
-    m_alphaUpdate = 0.1;
-    m_betaUpdate  = 0.05;
+	m_alphaUpdate = 0.1;
+	m_betaUpdate  = 0.05;
   }
   else if ( m_seqTargetBpp < 0.5 )
   {
-    m_alphaUpdate = 0.2;
-    m_betaUpdate  = 0.1;
+	m_alphaUpdate = 0.2;
+	m_betaUpdate  = 0.1;
   }
   else
   {
-    m_alphaUpdate = 0.4;
-    m_betaUpdate  = 0.2;
+	m_alphaUpdate = 0.4;
+	m_betaUpdate  = 0.2;
   }
 
   m_averageBits     = (Int)(m_targetBits / totalFrames);
@@ -125,34 +125,34 @@ Void TEncRCSeq::create( Int totalFrames, Int targetBitrate, Int frameRate, Int G
   m_bitsRatio   = new Int[m_GOPSize];
   for ( Int i=0; i<m_GOPSize; i++ )
   {
-    m_bitsRatio[i] = 1;
+	m_bitsRatio[i] = 1;
   }
 
   m_GOPID2Level = new Int[m_GOPSize];
   for ( Int i=0; i<m_GOPSize; i++ )
   {
-    m_GOPID2Level[i] = 1;
+	m_GOPID2Level[i] = 1;
   }
 
   m_picPara = new TRCParameter[m_numberOfLevel];
   for ( Int i=0; i<m_numberOfLevel; i++ )
   {
-    m_picPara[i].m_alpha = 0.0;
-    m_picPara[i].m_beta  = 0.0;
+	m_picPara[i].m_alpha = 0.0;
+	m_picPara[i].m_beta  = 0.0;
   }
 
   if ( m_useLCUSeparateModel )
   {
-    m_LCUPara = new TRCParameter*[m_numberOfLevel];
-    for ( Int i=0; i<m_numberOfLevel; i++ )
-    {
-      m_LCUPara[i] = new TRCParameter[m_numberOfLCU];
-      for ( Int j=0; j<m_numberOfLCU; j++)
-      {
-        m_LCUPara[i][j].m_alpha = 0.0;
-        m_LCUPara[i][j].m_beta  = 0.0;
-      }
-    }
+	m_LCUPara = new TRCParameter*[m_numberOfLevel];
+	for ( Int i=0; i<m_numberOfLevel; i++ )
+	{
+	  m_LCUPara[i] = new TRCParameter[m_numberOfLCU];
+	  for ( Int j=0; j<m_numberOfLCU; j++)
+	  {
+		m_LCUPara[i][j].m_alpha = 0.0;
+		m_LCUPara[i][j].m_beta  = 0.0;
+	  }
+	}
   }
 
   m_framesLeft = m_totalFrames;
@@ -165,30 +165,30 @@ Void TEncRCSeq::destroy()
 {
   if (m_bitsRatio != NULL)
   {
-    delete[] m_bitsRatio;
-    m_bitsRatio = NULL;
+	delete[] m_bitsRatio;
+	m_bitsRatio = NULL;
   }
 
   if ( m_GOPID2Level != NULL )
   {
-    delete[] m_GOPID2Level;
-    m_GOPID2Level = NULL;
+	delete[] m_GOPID2Level;
+	m_GOPID2Level = NULL;
   }
 
   if ( m_picPara != NULL )
   {
-    delete[] m_picPara;
-    m_picPara = NULL;
+	delete[] m_picPara;
+	m_picPara = NULL;
   }
 
   if ( m_LCUPara != NULL )
   {
-    for ( Int i=0; i<m_numberOfLevel; i++ )
-    {
-      delete[] m_LCUPara[i];
-    }
-    delete[] m_LCUPara;
-    m_LCUPara = NULL;
+	for ( Int i=0; i<m_numberOfLevel; i++ )
+	{
+	  delete[] m_LCUPara[i];
+	}
+	delete[] m_LCUPara;
+	m_LCUPara = NULL;
   }
 }
 
@@ -196,7 +196,7 @@ Void TEncRCSeq::initBitsRatio( Int bitsRatio[])
 {
   for (Int i=0; i<m_GOPSize; i++)
   {
-    m_bitsRatio[i] = bitsRatio[i];
+	m_bitsRatio[i] = bitsRatio[i];
   }
 }
 
@@ -204,7 +204,7 @@ Void TEncRCSeq::initGOPID2Level( Int GOPID2Level[] )
 {
   for ( Int i=0; i<m_GOPSize; i++ )
   {
-    m_GOPID2Level[i] = GOPID2Level[i];
+	m_GOPID2Level[i] = GOPID2Level[i];
   }
 }
 
@@ -214,26 +214,26 @@ Void TEncRCSeq::initPicPara( TRCParameter* picPara )
 
   if ( picPara == NULL )
   {
-    for ( Int i=0; i<m_numberOfLevel; i++ )
-    {
-      if (i>0)
-      {
-        m_picPara[i].m_alpha = 3.2003;
-        m_picPara[i].m_beta  = -1.367;
-      }
-      else
-      {
-        m_picPara[i].m_alpha = ALPHA;
-        m_picPara[i].m_beta  = BETA2;
-      }
-    }
+	for ( Int i=0; i<m_numberOfLevel; i++ )
+	{
+	  if (i>0)
+	  {
+		m_picPara[i].m_alpha = 3.2003;
+		m_picPara[i].m_beta  = -1.367;
+	  }
+	  else
+	  {
+		m_picPara[i].m_alpha = ALPHA;
+		m_picPara[i].m_beta  = BETA2;
+	  }
+	}
   }
   else
   {
-    for ( Int i=0; i<m_numberOfLevel; i++ )
-    {
-      m_picPara[i] = picPara[i];
-    }
+	for ( Int i=0; i<m_numberOfLevel; i++ )
+	{
+	  m_picPara[i] = picPara[i];
+	}
   }
 }
 
@@ -241,28 +241,28 @@ Void TEncRCSeq::initLCUPara( TRCParameter** LCUPara )
 {
   if ( m_LCUPara == NULL )
   {
-    return;
+	return;
   }
   if ( LCUPara == NULL )
   {
-    for ( Int i=0; i<m_numberOfLevel; i++ )
-    {
-      for ( Int j=0; j<m_numberOfLCU; j++)
-      {
-        m_LCUPara[i][j].m_alpha = m_picPara[i].m_alpha;
-        m_LCUPara[i][j].m_beta  = m_picPara[i].m_beta;
-      }
-    }
+	for ( Int i=0; i<m_numberOfLevel; i++ )
+	{
+	  for ( Int j=0; j<m_numberOfLCU; j++)
+	  {
+		m_LCUPara[i][j].m_alpha = m_picPara[i].m_alpha;
+		m_LCUPara[i][j].m_beta  = m_picPara[i].m_beta;
+	  }
+	}
   }
   else
   {
-    for ( Int i=0; i<m_numberOfLevel; i++ )
-    {
-      for ( Int j=0; j<m_numberOfLCU; j++)
-      {
-        m_LCUPara[i][j] = LCUPara[i][j];
-      }
-    }
+	for ( Int i=0; i<m_numberOfLevel; i++ )
+	{
+	  for ( Int j=0; j<m_numberOfLCU; j++)
+	  {
+		m_LCUPara[i][j] = LCUPara[i][j];
+	  }
+	}
   }
 }
 
@@ -277,7 +277,7 @@ Void TEncRCSeq::setAllBitRatio( Double basicLambda, Double* equaCoeffA, Double* 
   Int* bitsRatio = new Int[m_GOPSize];
   for ( Int i=0; i<m_GOPSize; i++ )
   {
-    bitsRatio[i] = (Int)( equaCoeffA[i] * pow( basicLambda, equaCoeffB[i] ) * m_numberOfPixel );
+	bitsRatio[i] = (Int)( equaCoeffA[i] * pow( basicLambda, equaCoeffB[i] ) * m_numberOfPixel );
   }
   initBitsRatio( bitsRatio );
   delete[] bitsRatio;
@@ -306,62 +306,69 @@ Void TEncRCGOP::create( TEncRCSeq* encRCSeq, Int numPic )
 
   if ( encRCSeq->getAdaptiveBits() > 0 && encRCSeq->getLastLambda() > 0.1 )
   {
-    Double targetBpp = (Double)targetBits / encRCSeq->getNumPixel();
-    Double basicLambda = 0.0;
-    Double* lambdaRatio = new Double[encRCSeq->getGOPSize()];
-    Double* equaCoeffA = new Double[encRCSeq->getGOPSize()];
-    Double* equaCoeffB = new Double[encRCSeq->getGOPSize()];
+	Double targetBpp = (Double)targetBits / encRCSeq->getNumPixel();
+	Double basicLambda = 0.0;
+	Double* lambdaRatio = new Double[encRCSeq->getGOPSize()];
+	Double* equaCoeffA = new Double[encRCSeq->getGOPSize()];
+	Double* equaCoeffB = new Double[encRCSeq->getGOPSize()];
 
-    if ( encRCSeq->getAdaptiveBits() == 1 )   // for GOP size =4, low delay case
-    {
-      if ( encRCSeq->getLastLambda() < 120.0 )
-      {
-        lambdaRatio[1] = 0.725 * log( encRCSeq->getLastLambda() ) + 0.5793;
-        lambdaRatio[0] = 1.3 * lambdaRatio[1];
-        lambdaRatio[2] = 1.3 * lambdaRatio[1];
-        lambdaRatio[3] = 1.0;
-      }
-      else
-      {
-        lambdaRatio[0] = 5.0;
-        lambdaRatio[1] = 4.0;
-        lambdaRatio[2] = 5.0;
-        lambdaRatio[3] = 1.0;
-      }
-    }
-    else if ( encRCSeq->getAdaptiveBits() == 2 )  // for GOP size = 8, random access case
-    {
-      if ( encRCSeq->getLastLambda() < 90.0 )
-      {
-        lambdaRatio[0] = 1.0;
-        lambdaRatio[1] = 0.725 * log( encRCSeq->getLastLambda() ) + 0.7963;
-        lambdaRatio[2] = 1.3 * lambdaRatio[1];
-        lambdaRatio[3] = 3.25 * lambdaRatio[1];
-        lambdaRatio[4] = 3.25 * lambdaRatio[1];
-        lambdaRatio[5] = 1.3  * lambdaRatio[1];
-        lambdaRatio[6] = 3.25 * lambdaRatio[1];
-        lambdaRatio[7] = 3.25 * lambdaRatio[1];
-      }
-      else
-      {
-        lambdaRatio[0] = 1.0;
-        lambdaRatio[1] = 4.0;
-        lambdaRatio[2] = 5.0;
-        lambdaRatio[3] = 12.3;
-        lambdaRatio[4] = 12.3;
-        lambdaRatio[5] = 5.0;
-        lambdaRatio[6] = 12.3;
-        lambdaRatio[7] = 12.3;
-      }
-    }
+	if ( encRCSeq->getAdaptiveBits() == 1 )   // for GOP size =4, low delay case
+	{
+	  if ( encRCSeq->getLastLambda() < 120.0 )
+	  {
+		lambdaRatio[1] = 0.725 * log( encRCSeq->getLastLambda() ) + 0.5793;
+		lambdaRatio[0] = 1.3 * lambdaRatio[1];
+		lambdaRatio[2] = 1.3 * lambdaRatio[1];
+		lambdaRatio[3] = 1.0;
+	  }
+	  else
+	  {
+		lambdaRatio[0] = 5.0;
+		lambdaRatio[1] = 4.0;
+		lambdaRatio[2] = 5.0;
+		lambdaRatio[3] = 1.0;
+	  }
+	}
+	else if ( encRCSeq->getAdaptiveBits() == 2 )  // for GOP size = 8, random access case
+	{
+	  if ( encRCSeq->getLastLambda() < 90.0 )
+	  {
+		lambdaRatio[0] = 1.0;
+		lambdaRatio[1] = 0.725 * log( encRCSeq->getLastLambda() ) + 0.7963;
+		lambdaRatio[2] = 1.3 * lambdaRatio[1];
+		lambdaRatio[3] = 3.25 * lambdaRatio[1];
+		lambdaRatio[4] = 3.25 * lambdaRatio[1];
+		lambdaRatio[5] = 1.3  * lambdaRatio[1];
+		lambdaRatio[6] = 3.25 * lambdaRatio[1];
+		lambdaRatio[7] = 3.25 * lambdaRatio[1];
+	  }
+	  else
+	  {
+		lambdaRatio[0] = 1.0;
+		lambdaRatio[1] = 4.0;
+		lambdaRatio[2] = 5.0;
+		lambdaRatio[3] = 12.3;
+		lambdaRatio[4] = 12.3;
+		lambdaRatio[5] = 5.0;
+		lambdaRatio[6] = 12.3;
+		lambdaRatio[7] = 12.3;
+	  }
+	}
 
-    xCalEquaCoeff( encRCSeq, lambdaRatio, equaCoeffA, equaCoeffB, encRCSeq->getGOPSize() );
-    basicLambda = xSolveEqua( targetBpp, equaCoeffA, equaCoeffB, encRCSeq->getGOPSize() );
-    encRCSeq->setAllBitRatio( basicLambda, equaCoeffA, equaCoeffB );
+	// Derek
+	// ¦Ë = alpha * bpp^beta
+	// bpp[i] = ( (1/alpha)*(¦Ë_GOP*ratio[i]) )^(1/beta)
+	// bpp[i] = A * (¦Ë_GOP^B)
+	// A = (1/alpha)^(1/beta) * ratio[i]^(1/beta)
+	// B = (1/beta)
+	xCalEquaCoeff( encRCSeq, lambdaRatio, equaCoeffA, equaCoeffB, encRCSeq->getGOPSize() );
+	// Start from ¦Ë_GOP = solution = 100
+	basicLambda = xSolveEqua( targetBpp, equaCoeffA, equaCoeffB, encRCSeq->getGOPSize() );
+	encRCSeq->setAllBitRatio( basicLambda, equaCoeffA, equaCoeffB );
 
-    delete []lambdaRatio;
-    delete []equaCoeffA;
-    delete []equaCoeffB;
+	delete []lambdaRatio;
+	delete []equaCoeffA;
+	delete []equaCoeffB;
   }
 
   m_picTargetBitInGOP = new Int[numPic];
@@ -370,12 +377,12 @@ Void TEncRCGOP::create( TEncRCSeq* encRCSeq, Int numPic )
   Int currPicRatio = 0;
   for ( i=0; i<numPic; i++ )
   {
-    totalPicRatio += encRCSeq->getBitRatio( i );
+	totalPicRatio += encRCSeq->getBitRatio( i );
   }
   for ( i=0; i<numPic; i++ )
   {
-    currPicRatio = encRCSeq->getBitRatio( i );
-    m_picTargetBitInGOP[i] = (Int)( ((Double)targetBits) * currPicRatio / totalPicRatio );
+	currPicRatio = encRCSeq->getBitRatio( i );
+	m_picTargetBitInGOP[i] = (Int)( ((Double)targetBits) * currPicRatio / totalPicRatio );
   }
 
   m_encRCSeq    = encRCSeq;
@@ -389,11 +396,11 @@ Void TEncRCGOP::xCalEquaCoeff( TEncRCSeq* encRCSeq, Double* lambdaRatio, Double*
 {
   for ( Int i=0; i<GOPSize; i++ )
   {
-    Int frameLevel = encRCSeq->getGOPID2Level(i);
-    Double alpha   = encRCSeq->getPicPara(frameLevel).m_alpha;
-    Double beta    = encRCSeq->getPicPara(frameLevel).m_beta;
-    equaCoeffA[i] = pow( 1.0/alpha, 1.0/beta ) * pow( lambdaRatio[i], 1.0/beta );
-    equaCoeffB[i] = 1.0/beta;
+	Int frameLevel = encRCSeq->getGOPID2Level(i);
+	Double alpha   = encRCSeq->getPicPara(frameLevel).m_alpha;
+	Double beta    = encRCSeq->getPicPara(frameLevel).m_beta;
+	equaCoeffA[i] = pow( 1.0/alpha, 1.0/beta ) * pow( lambdaRatio[i], 1.0/beta );
+	equaCoeffB[i] = 1.0/beta;
   }
 }
 
@@ -404,27 +411,27 @@ Double TEncRCGOP::xSolveEqua( Double targetBpp, Double* equaCoeffA, Double* equa
   Double maxNumber = 10000.0;
   for ( Int i=0; i<g_RCIterationNum; i++ )
   {
-    Double fx = 0.0;
-    for ( Int j=0; j<GOPSize; j++ )
-    {
-      fx += equaCoeffA[j] * pow( solution, equaCoeffB[j] );
-    }
+	Double fx = 0.0;
+	for ( Int j=0; j<GOPSize; j++ )
+	{
+	  fx += equaCoeffA[j] * pow( solution, equaCoeffB[j] );
+	}
 
-    if ( fabs( fx - targetBpp ) < 0.000001 )
-    {
-      break;
-    }
+	if ( fabs( fx - targetBpp ) < 0.000001 )
+	{
+	  break;
+	}
 
-    if ( fx > targetBpp )
-    {
-      minNumber = solution;
-      solution = ( solution + maxNumber ) / 2.0;
-    }
-    else
-    {
-      maxNumber = solution;
-      solution = ( solution + minNumber ) / 2.0;
-    }
+	if ( fx > targetBpp )	// Derek, equaCoeffB is negative, so solution is inverse-propotional to fx
+	{
+	  minNumber = solution;
+	  solution = ( solution + maxNumber ) / 2.0;
+	}
+	else
+	{
+	  maxNumber = solution;
+	  solution = ( solution + minNumber ) / 2.0;
+	}
   }
 
   solution = Clip3( 0.1, 10000.0, solution );
@@ -436,8 +443,8 @@ Void TEncRCGOP::destroy()
   m_encRCSeq = NULL;
   if ( m_picTargetBitInGOP != NULL )
   {
-    delete[] m_picTargetBitInGOP;
-    m_picTargetBitInGOP = NULL;
+	delete[] m_picTargetBitInGOP;
+	m_picTargetBitInGOP = NULL;
   }
 }
 
@@ -456,7 +463,7 @@ Int TEncRCGOP::xEstGOPTargetBits( TEncRCSeq* encRCSeq, Int GOPSize )
 
   if ( targetBits < 200 )
   {
-    targetBits = 200;   // at least allocate 200 bits for one GOP
+	targetBits = 200;   // at least allocate 200 bits for one GOP
   }
 
   return targetBits;
@@ -503,19 +510,19 @@ Int TEncRCPic::xEstPicTargetBits( TEncRCSeq* encRCSeq, TEncRCGOP* encRCGOP )
   Int totalPicRatio   = 0;
   for ( i=currPicPosition; i<encRCGOP->getNumPic(); i++ )
   {
-    totalPicRatio += encRCSeq->getBitRatio( i );
+	totalPicRatio += encRCSeq->getBitRatio( i );
   }
 
   targetBits  = Int( ((Double)GOPbitsLeft) * currPicRatio / totalPicRatio );
 
   if ( targetBits < 100 )
   {
-    targetBits = 100;   // at least allocate 100 bits for one picture
+	targetBits = 100;   // at least allocate 100 bits for one picture
   }
 
   if ( m_encRCSeq->getFramesLeft() > 16 )
   {
-    targetBits = Int( g_RCWeightPicRargetBitInBuffer * targetBits + g_RCWeightPicTargetBitInGOP * m_encRCGOP->getTargetBitInGOP( currPicPosition ) );
+	targetBits = Int( g_RCWeightPicRargetBitInBuffer * targetBits + g_RCWeightPicTargetBitInGOP * m_encRCGOP->getTargetBitInGOP( currPicPosition ) );
   }
 
   return targetBits;
@@ -529,17 +536,17 @@ Int TEncRCPic::xEstPicHeaderBits( list<TEncRCPic*>& listPreviousPictures, Int fr
   list<TEncRCPic*>::iterator it;
   for ( it = listPreviousPictures.begin(); it != listPreviousPictures.end(); it++ )
   {
-    if ( (*it)->getFrameLevel() == frameLevel )
-    {
-      totalPreviousBits += (*it)->getPicActualHeaderBits();
-      numPreviousPics++;
-    }
+	if ( (*it)->getFrameLevel() == frameLevel )
+	{
+	  totalPreviousBits += (*it)->getPicActualHeaderBits();
+	  numPreviousPics++;
+	}
   }
 
   Int estHeaderBits = 0;
   if ( numPreviousPics > 0 )
   {
-    estHeaderBits = totalPreviousBits / numPreviousPics;
+	estHeaderBits = totalPreviousBits / numPreviousPics;
   }
 
   return estHeaderBits;
@@ -556,28 +563,28 @@ Int TEncRCPic::xEstPicLowerBound(TEncRCSeq* encRCSeq, TEncRCGOP* encRCGOP)
   Int totalPicRatio = 0;
   for (Int i = nextPicPosition; i < encRCGOP->getNumPic(); i++)
   {
-    totalPicRatio += encRCSeq->getBitRatio(i);
+	totalPicRatio += encRCSeq->getBitRatio(i);
   }
 
   if (nextPicPosition == 0)
   {
-    GOPbitsLeft = encRCGOP->getTargetBits();
+	GOPbitsLeft = encRCGOP->getTargetBits();
   }
   else
   {
-    GOPbitsLeft -= m_targetBits;
+	GOPbitsLeft -= m_targetBits;
   }
 
   lowerBound = Int(((Double)GOPbitsLeft) * nextPicRatio / totalPicRatio);
 
   if (lowerBound < 100)
   {
-    lowerBound = 100;   // at least allocate 100 bits for one picture
+	lowerBound = 100;   // at least allocate 100 bits for one picture
   }
 
   if (m_encRCSeq->getFramesLeft() > 16)
   {
-    lowerBound = Int(g_RCWeightPicRargetBitInBuffer * lowerBound + g_RCWeightPicTargetBitInGOP * m_encRCGOP->getTargetBitInGOP(nextPicPosition));
+	lowerBound = Int(g_RCWeightPicRargetBitInBuffer * lowerBound + g_RCWeightPicTargetBitInGOP * m_encRCGOP->getTargetBitInGOP(nextPicPosition));
   }
 
   return lowerBound;
@@ -587,10 +594,10 @@ Void TEncRCPic::addToPictureLsit( list<TEncRCPic*>& listPreviousPictures )
 {
   if ( listPreviousPictures.size() > g_RCMaxPicListSize )
   {
-    TEncRCPic* p = listPreviousPictures.front();
-    listPreviousPictures.pop_front();
-    p->destroy();
-    delete p;
+	TEncRCPic* p = listPreviousPictures.front();
+	listPreviousPictures.pop_front();
+	p->destroy();
+	delete p;
   }
 
   listPreviousPictures.push_back( this );
@@ -607,7 +614,7 @@ Void TEncRCPic::create( TEncRCSeq* encRCSeq, TEncRCGOP* encRCGOP, Int frameLevel
 
   if ( targetBits < estHeaderBits + 100 )
   {
-    targetBits = estHeaderBits + 100;   // at least allocate 100 bits for picture data
+	targetBits = estHeaderBits + 100;   // at least allocate 100 bits for picture data
   }
 
   m_frameLevel       = frameLevel;
@@ -634,18 +641,18 @@ Void TEncRCPic::create( TEncRCSeq* encRCSeq, TEncRCGOP* encRCGOP, Int frameLevel
   Int LCUIdx;
   for ( i=0; i<picWidthInLCU; i++ )
   {
-    for ( j=0; j<picHeightInLCU; j++ )
-    {
-      LCUIdx = j*picWidthInLCU + i;
-      m_LCUs[LCUIdx].m_actualBits = 0;
-      m_LCUs[LCUIdx].m_QP         = 0;
-      m_LCUs[LCUIdx].m_lambda     = 0.0;
-      m_LCUs[LCUIdx].m_targetBits = 0;
-      m_LCUs[LCUIdx].m_bitWeight  = 1.0;
-      Int currWidth  = ( (i == picWidthInLCU -1) ? picWidth  - LCUWidth *(picWidthInLCU -1) : LCUWidth  );
-      Int currHeight = ( (j == picHeightInLCU-1) ? picHeight - LCUHeight*(picHeightInLCU-1) : LCUHeight );
-      m_LCUs[LCUIdx].m_numberOfPixel = currWidth * currHeight;
-    }
+	for ( j=0; j<picHeightInLCU; j++ )
+	{
+	  LCUIdx = j*picWidthInLCU + i;
+	  m_LCUs[LCUIdx].m_actualBits = 0;
+	  m_LCUs[LCUIdx].m_QP         = 0;
+	  m_LCUs[LCUIdx].m_lambda     = 0.0;
+	  m_LCUs[LCUIdx].m_targetBits = 0;
+	  m_LCUs[LCUIdx].m_bitWeight  = 1.0;
+	  Int currWidth  = ( (i == picWidthInLCU -1) ? picWidth  - LCUWidth *(picWidthInLCU -1) : LCUWidth  );
+	  Int currHeight = ( (j == picHeightInLCU-1) ? picHeight - LCUHeight*(picHeightInLCU-1) : LCUHeight );
+	  m_LCUs[LCUIdx].m_numberOfPixel = currWidth * currHeight;
+	}
   }
   m_picActualHeaderBits = 0;
   m_picActualBits       = 0;
@@ -657,8 +664,8 @@ Void TEncRCPic::destroy()
 {
   if( m_LCUs != NULL )
   {
-    delete[] m_LCUs;
-    m_LCUs = NULL;
+	delete[] m_LCUs;
+	m_LCUs = NULL;
   }
   m_encRCSeq = NULL;
   m_encRCGOP = NULL;
@@ -673,11 +680,11 @@ Double TEncRCPic::estimatePicLambda( list<TEncRCPic*>& listPreviousPictures, Sli
   Double estLambda;
   if (eSliceType == I_SLICE)
   {
-    estLambda = calculateLambdaIntra(alpha, beta, pow(m_totalCostIntra/(Double)m_numberOfPixel, BETA1), bpp);
+	estLambda = calculateLambdaIntra(alpha, beta, pow(m_totalCostIntra/(Double)m_numberOfPixel, BETA1), bpp);
   }
   else
   {
-    estLambda = alpha * pow( bpp, beta );
+	estLambda = alpha * pow( bpp, beta );
   }
 
   Double lastLevelLambda = -1.0;
@@ -686,42 +693,42 @@ Double TEncRCPic::estimatePicLambda( list<TEncRCPic*>& listPreviousPictures, Sli
   list<TEncRCPic*>::iterator it;
   for ( it = listPreviousPictures.begin(); it != listPreviousPictures.end(); it++ )
   {
-    if ( (*it)->getFrameLevel() == m_frameLevel )
-    {
-      lastLevelLambda = (*it)->getPicActualLambda();
-    }
-    lastPicLambda     = (*it)->getPicActualLambda();
+	if ( (*it)->getFrameLevel() == m_frameLevel )
+	{
+	  lastLevelLambda = (*it)->getPicActualLambda();
+	}
+	lastPicLambda     = (*it)->getPicActualLambda();
 
-    if ( lastPicLambda > 0.0 )
-    {
-      lastValidLambda = lastPicLambda;
-    }
+	if ( lastPicLambda > 0.0 )
+	{
+	  lastValidLambda = lastPicLambda;
+	}
   }
 
   if ( lastLevelLambda > 0.0 )
   {
-    lastLevelLambda = Clip3( 0.1, 10000.0, lastLevelLambda );
-    estLambda = Clip3( lastLevelLambda * pow( 2.0, -3.0/3.0 ), lastLevelLambda * pow( 2.0, 3.0/3.0 ), estLambda );
+	lastLevelLambda = Clip3( 0.1, 10000.0, lastLevelLambda );
+	estLambda = Clip3( lastLevelLambda * pow( 2.0, -3.0/3.0 ), lastLevelLambda * pow( 2.0, 3.0/3.0 ), estLambda );
   }
 
   if ( lastPicLambda > 0.0 )
   {
-    lastPicLambda = Clip3( 0.1, 2000.0, lastPicLambda );
-    estLambda = Clip3( lastPicLambda * pow( 2.0, -10.0/3.0 ), lastPicLambda * pow( 2.0, 10.0/3.0 ), estLambda );
+	lastPicLambda = Clip3( 0.1, 2000.0, lastPicLambda );
+	estLambda = Clip3( lastPicLambda * pow( 2.0, -10.0/3.0 ), lastPicLambda * pow( 2.0, 10.0/3.0 ), estLambda );
   }
   else if ( lastValidLambda > 0.0 )
   {
-    lastValidLambda = Clip3( 0.1, 2000.0, lastValidLambda );
-    estLambda = Clip3( lastValidLambda * pow(2.0, -10.0/3.0), lastValidLambda * pow(2.0, 10.0/3.0), estLambda );
+	lastValidLambda = Clip3( 0.1, 2000.0, lastValidLambda );
+	estLambda = Clip3( lastValidLambda * pow(2.0, -10.0/3.0), lastValidLambda * pow(2.0, 10.0/3.0), estLambda );
   }
   else
   {
-    estLambda = Clip3( 0.1, 10000.0, estLambda );
+	estLambda = Clip3( 0.1, 10000.0, estLambda );
   }
 
   if ( estLambda < 0.1 )
   {
-    estLambda = 0.1;
+	estLambda = 0.1;
   }
 
   m_estPicLambda = estLambda;
@@ -730,30 +737,30 @@ Double TEncRCPic::estimatePicLambda( list<TEncRCPic*>& listPreviousPictures, Sli
   // initial BU bit allocation weight
   for ( Int i=0; i<m_numberOfLCU; i++ )
   {
-    Double alphaLCU, betaLCU;
-    if ( m_encRCSeq->getUseLCUSeparateModel() )
-    {
-      alphaLCU = m_encRCSeq->getLCUPara( m_frameLevel, i ).m_alpha;
-      betaLCU  = m_encRCSeq->getLCUPara( m_frameLevel, i ).m_beta;
-    }
-    else
-    {
-      alphaLCU = m_encRCSeq->getPicPara( m_frameLevel ).m_alpha;
-      betaLCU  = m_encRCSeq->getPicPara( m_frameLevel ).m_beta;
-    }
+	Double alphaLCU, betaLCU;
+	if ( m_encRCSeq->getUseLCUSeparateModel() )
+	{
+	  alphaLCU = m_encRCSeq->getLCUPara( m_frameLevel, i ).m_alpha;
+	  betaLCU  = m_encRCSeq->getLCUPara( m_frameLevel, i ).m_beta;
+	}
+	else
+	{
+	  alphaLCU = m_encRCSeq->getPicPara( m_frameLevel ).m_alpha;
+	  betaLCU  = m_encRCSeq->getPicPara( m_frameLevel ).m_beta;
+	}
 
-    m_LCUs[i].m_bitWeight =  m_LCUs[i].m_numberOfPixel * pow( estLambda/alphaLCU, 1.0/betaLCU );
+	m_LCUs[i].m_bitWeight =  m_LCUs[i].m_numberOfPixel * pow( estLambda/alphaLCU, 1.0/betaLCU );
 
-    if ( m_LCUs[i].m_bitWeight < 0.01 )
-    {
-      m_LCUs[i].m_bitWeight = 0.01;
-    }
-    totalWeight += m_LCUs[i].m_bitWeight;
+	if ( m_LCUs[i].m_bitWeight < 0.01 )
+	{
+	  m_LCUs[i].m_bitWeight = 0.01;
+	}
+	totalWeight += m_LCUs[i].m_bitWeight;
   }
   for ( Int i=0; i<m_numberOfLCU; i++ )
   {
-    Double BUTargetBits = m_targetBits * m_LCUs[i].m_bitWeight / totalWeight;
-    m_LCUs[i].m_bitWeight = BUTargetBits;
+	Double BUTargetBits = m_targetBits * m_LCUs[i].m_bitWeight / totalWeight;
+	m_LCUs[i].m_bitWeight = BUTargetBits;
   }
 
   return estLambda;
@@ -769,29 +776,29 @@ Int TEncRCPic::estimatePicQP( Double lambda, list<TEncRCPic*>& listPreviousPictu
   list<TEncRCPic*>::iterator it;
   for ( it = listPreviousPictures.begin(); it != listPreviousPictures.end(); it++ )
   {
-    if ( (*it)->getFrameLevel() == m_frameLevel )
-    {
-      lastLevelQP = (*it)->getPicActualQP();
-    }
-    lastPicQP = (*it)->getPicActualQP();
-    if ( lastPicQP > g_RCInvalidQPValue )
-    {
-      lastValidQP = lastPicQP;
-    }
+	if ( (*it)->getFrameLevel() == m_frameLevel )
+	{
+	  lastLevelQP = (*it)->getPicActualQP();
+	}
+	lastPicQP = (*it)->getPicActualQP();
+	if ( lastPicQP > g_RCInvalidQPValue )
+	{
+	  lastValidQP = lastPicQP;
+	}
   }
 
   if ( lastLevelQP > g_RCInvalidQPValue )
   {
-    QP = Clip3( lastLevelQP - 3, lastLevelQP + 3, QP );
+	QP = Clip3( lastLevelQP - 3, lastLevelQP + 3, QP );
   }
 
   if( lastPicQP > g_RCInvalidQPValue )
   {
-    QP = Clip3( lastPicQP - 10, lastPicQP + 10, QP );
+	QP = Clip3( lastPicQP - 10, lastPicQP + 10, QP );
   }
   else if( lastValidQP > g_RCInvalidQPValue )
   {
-    QP = Clip3( lastValidQP - 10, lastValidQP + 10, QP );
+	QP = Clip3( lastValidQP - 10, lastValidQP + 10, QP );
   }
 
   return QP;
@@ -805,35 +812,35 @@ Double TEncRCPic::getLCUTargetBpp(SliceType eSliceType)
 
   if (eSliceType == I_SLICE)
   {
-    Int noOfLCUsLeft = m_numberOfLCU - LCUIdx + 1;
-    Int bitrateWindow = min(4,noOfLCUsLeft);
-    Double MAD      = getLCU(LCUIdx).m_costIntra;
+	Int noOfLCUsLeft = m_numberOfLCU - LCUIdx + 1;
+	Int bitrateWindow = min(4,noOfLCUsLeft);
+	Double MAD      = getLCU(LCUIdx).m_costIntra;
 
-    if (m_remainingCostIntra > 0.1 )
-    {
-      Double weightedBitsLeft = (m_bitsLeft*bitrateWindow+(m_bitsLeft-getLCU(LCUIdx).m_targetBitsLeft)*noOfLCUsLeft)/(Double)bitrateWindow;
-      avgBits = Int( MAD*weightedBitsLeft/m_remainingCostIntra );
-    }
-    else
-    {
-      avgBits = Int( m_bitsLeft / m_LCULeft );
-    }
-    m_remainingCostIntra -= MAD;
+	if (m_remainingCostIntra > 0.1 )
+	{
+	  Double weightedBitsLeft = (m_bitsLeft*bitrateWindow+(m_bitsLeft-getLCU(LCUIdx).m_targetBitsLeft)*noOfLCUsLeft)/(Double)bitrateWindow;
+	  avgBits = Int( MAD*weightedBitsLeft/m_remainingCostIntra );
+	}
+	else
+	{
+	  avgBits = Int( m_bitsLeft / m_LCULeft );
+	}
+	m_remainingCostIntra -= MAD;
   }
   else
   {
-    Double totalWeight = 0;
-    for ( Int i=LCUIdx; i<m_numberOfLCU; i++ )
-    {
-      totalWeight += m_LCUs[i].m_bitWeight;
-    }
-    Int realInfluenceLCU = min( g_RCLCUSmoothWindowSize, getLCULeft() );
-    avgBits = (Int)( m_LCUs[LCUIdx].m_bitWeight - ( totalWeight - m_bitsLeft ) / realInfluenceLCU + 0.5 );
+	Double totalWeight = 0;
+	for ( Int i=LCUIdx; i<m_numberOfLCU; i++ )
+	{
+	  totalWeight += m_LCUs[i].m_bitWeight;
+	}
+	Int realInfluenceLCU = min( g_RCLCUSmoothWindowSize, getLCULeft() );
+	avgBits = (Int)( m_LCUs[LCUIdx].m_bitWeight - ( totalWeight - m_bitsLeft ) / realInfluenceLCU + 0.5 );
   }
 
   if ( avgBits < 1 )
   {
-    avgBits = 1;
+	avgBits = 1;
   }
 
   bpp = ( Double )avgBits/( Double )m_LCUs[ LCUIdx ].m_numberOfPixel;
@@ -849,13 +856,13 @@ Double TEncRCPic::getLCUEstLambda( Double bpp )
   Double beta;
   if ( m_encRCSeq->getUseLCUSeparateModel() )
   {
-    alpha = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_alpha;
-    beta  = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_beta;
+	alpha = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_alpha;
+	beta  = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_beta;
   }
   else
   {
-    alpha = m_encRCSeq->getPicPara( m_frameLevel ).m_alpha;
-    beta  = m_encRCSeq->getPicPara( m_frameLevel ).m_beta;
+	alpha = m_encRCSeq->getPicPara( m_frameLevel ).m_alpha;
+	beta  = m_encRCSeq->getPicPara( m_frameLevel ).m_beta;
   }
 
   Double estLambda = alpha * pow( bpp, beta );
@@ -866,30 +873,30 @@ Double TEncRCPic::getLCUEstLambda( Double bpp )
   Double clipNeighbourLambda = -1.0;
   for ( Int i=LCUIdx - 1; i>=0; i-- )
   {
-    if ( m_LCUs[i].m_lambda > 0 )
-    {
-      clipNeighbourLambda = m_LCUs[i].m_lambda;
-      break;
-    }
+	if ( m_LCUs[i].m_lambda > 0 )
+	{
+	  clipNeighbourLambda = m_LCUs[i].m_lambda;
+	  break;
+	}
   }
 
   if ( clipNeighbourLambda > 0.0 )
   {
-    estLambda = Clip3( clipNeighbourLambda * pow( 2.0, -1.0/3.0 ), clipNeighbourLambda * pow( 2.0, 1.0/3.0 ), estLambda );
+	estLambda = Clip3( clipNeighbourLambda * pow( 2.0, -1.0/3.0 ), clipNeighbourLambda * pow( 2.0, 1.0/3.0 ), estLambda );
   }
 
   if ( clipPicLambda > 0.0 )
   {
-    estLambda = Clip3( clipPicLambda * pow( 2.0, -2.0/3.0 ), clipPicLambda * pow( 2.0, 2.0/3.0 ), estLambda );
+	estLambda = Clip3( clipPicLambda * pow( 2.0, -2.0/3.0 ), clipPicLambda * pow( 2.0, 2.0/3.0 ), estLambda );
   }
   else
   {
-    estLambda = Clip3( 10.0, 1000.0, estLambda );
+	estLambda = Clip3( 10.0, 1000.0, estLambda );
   }
 
   if ( estLambda < 0.1 )
   {
-    estLambda = 0.1;
+	estLambda = 0.1;
   }
 
   return estLambda;
@@ -904,16 +911,16 @@ Int TEncRCPic::getLCUEstQP( Double lambda, Int clipPicQP )
   Int clipNeighbourQP = g_RCInvalidQPValue;
   for ( Int i=LCUIdx - 1; i>=0; i-- )
   {
-    if ( (getLCU(i)).m_QP > g_RCInvalidQPValue )
-    {
-      clipNeighbourQP = getLCU(i).m_QP;
-      break;
-    }
+	if ( (getLCU(i)).m_QP > g_RCInvalidQPValue )
+	{
+	  clipNeighbourQP = getLCU(i).m_QP;
+	  break;
+	}
   }
 
   if ( clipNeighbourQP > g_RCInvalidQPValue )
   {
-    estQP = Clip3( clipNeighbourQP - 1, clipNeighbourQP + 1, estQP );
+	estQP = Clip3( clipNeighbourQP - 1, clipNeighbourQP + 1, estQP );
   }
 
   estQP = Clip3( clipPicQP - 2, clipPicQP + 2, estQP );
@@ -933,12 +940,12 @@ Void TEncRCPic::updateAfterCTU( Int LCUIdx, Int bits, Int QP, Double lambda, Boo
 
   if ( !updateLCUParameter )
   {
-    return;
+	return;
   }
 
   if ( !m_encRCSeq->getUseLCUSeparateModel() )
   {
-    return;
+	return;
   }
 
   Double alpha = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_alpha;
@@ -952,18 +959,18 @@ Void TEncRCPic::updateAfterCTU( Int LCUIdx, Int bits, Int QP, Double lambda, Boo
 
   if( inputLambda < 0.01 || calLambda < 0.01 || bpp < 0.0001 )
   {
-    alpha *= ( 1.0 - m_encRCSeq->getAlphaUpdate() / 2.0 );
-    beta  *= ( 1.0 - m_encRCSeq->getBetaUpdate() / 2.0 );
+	alpha *= ( 1.0 - m_encRCSeq->getAlphaUpdate() / 2.0 );
+	beta  *= ( 1.0 - m_encRCSeq->getBetaUpdate() / 2.0 );
 
-    alpha = Clip3( g_RCAlphaMinValue, g_RCAlphaMaxValue, alpha );
-    beta  = Clip3( g_RCBetaMinValue,  g_RCBetaMaxValue,  beta  );
+	alpha = Clip3( g_RCAlphaMinValue, g_RCAlphaMaxValue, alpha );
+	beta  = Clip3( g_RCBetaMinValue,  g_RCBetaMaxValue,  beta  );
 
-    TRCParameter rcPara;
-    rcPara.m_alpha = alpha;
-    rcPara.m_beta  = beta;
-    m_encRCSeq->setLCUPara( m_frameLevel, LCUIdx, rcPara );
+	TRCParameter rcPara;
+	rcPara.m_alpha = alpha;
+	rcPara.m_beta  = beta;
+	m_encRCSeq->setLCUPara( m_frameLevel, LCUIdx, rcPara );
 
-    return;
+	return;
   }
 
   calLambda = Clip3( inputLambda / 10.0, inputLambda * 10.0, calLambda );
@@ -990,21 +997,21 @@ Double TEncRCPic::calAverageQP()
   Int i;
   for ( i=0; i<m_numberOfLCU; i++ )
   {
-    if ( m_LCUs[i].m_QP > 0 )
-    {
-      totalQPs += m_LCUs[i].m_QP;
-      numTotalLCUs++;
-    }
+	if ( m_LCUs[i].m_QP > 0 )
+	{
+	  totalQPs += m_LCUs[i].m_QP;
+	  numTotalLCUs++;
+	}
   }
 
   Double avgQP = 0.0;
   if ( numTotalLCUs == 0 )
   {
-    avgQP = g_RCInvalidQPValue;
+	avgQP = g_RCInvalidQPValue;
   }
   else
   {
-    avgQP = ((Double)totalQPs) / ((Double)numTotalLCUs);
+	avgQP = ((Double)totalQPs) / ((Double)numTotalLCUs);
   }
   return avgQP;
 }
@@ -1017,21 +1024,21 @@ Double TEncRCPic::calAverageLambda()
   Int i;
   for ( i=0; i<m_numberOfLCU; i++ )
   {
-    if ( m_LCUs[i].m_lambda > 0.01 )
-    {
-      totalLambdas += log( m_LCUs[i].m_lambda );
-      numTotalLCUs++;
-    }
+	if ( m_LCUs[i].m_lambda > 0.01 )
+	{
+	  totalLambdas += log( m_LCUs[i].m_lambda );
+	  numTotalLCUs++;
+	}
   }
 
   Double avgLambda;
   if( numTotalLCUs == 0 )
   {
-    avgLambda = -1.0;
+	avgLambda = -1.0;
   }
   else
   {
-    avgLambda = pow( 2.7183, totalLambdas / numTotalLCUs );
+	avgLambda = pow( 2.7183, totalLambdas / numTotalLCUs );
   }
   return avgLambda;
 }
@@ -1043,11 +1050,11 @@ Void TEncRCPic::updateAfterPicture( Int actualHeaderBits, Int actualTotalBits, D
   m_picActualBits       = actualTotalBits;
   if ( averageQP > 0.0 )
   {
-    m_picQP             = Int( averageQP + 0.5 );
+	m_picQP             = Int( averageQP + 0.5 );
   }
   else
   {
-    m_picQP             = g_RCInvalidQPValue;
+	m_picQP             = g_RCInvalidQPValue;
   }
   m_picLambda           = averageLambda;
 
@@ -1056,41 +1063,41 @@ Void TEncRCPic::updateAfterPicture( Int actualHeaderBits, Int actualTotalBits, D
 
   if (eSliceType == I_SLICE)
   {
-    updateAlphaBetaIntra(&alpha, &beta);
+	updateAlphaBetaIntra(&alpha, &beta);
   }
   else
   {
-    // update parameters
-    Double picActualBits = ( Double )m_picActualBits;
-    Double picActualBpp  = picActualBits/(Double)m_numberOfPixel;
-    Double calLambda     = alpha * pow( picActualBpp, beta );
-    Double inputLambda   = m_picLambda;
+	// update parameters
+	Double picActualBits = ( Double )m_picActualBits;
+	Double picActualBpp  = picActualBits/(Double)m_numberOfPixel;
+	Double calLambda     = alpha * pow( picActualBpp, beta );
+	Double inputLambda   = m_picLambda;
 
-    if ( inputLambda < 0.01 || calLambda < 0.01 || picActualBpp < 0.0001 )
-    {
-      alpha *= ( 1.0 - m_encRCSeq->getAlphaUpdate() / 2.0 );
-      beta  *= ( 1.0 - m_encRCSeq->getBetaUpdate() / 2.0 );
+	if ( inputLambda < 0.01 || calLambda < 0.01 || picActualBpp < 0.0001 )
+	{
+	  alpha *= ( 1.0 - m_encRCSeq->getAlphaUpdate() / 2.0 );
+	  beta  *= ( 1.0 - m_encRCSeq->getBetaUpdate() / 2.0 );
 
-      alpha = Clip3( g_RCAlphaMinValue, g_RCAlphaMaxValue, alpha );
-      beta  = Clip3( g_RCBetaMinValue,  g_RCBetaMaxValue,  beta  );
+	  alpha = Clip3( g_RCAlphaMinValue, g_RCAlphaMaxValue, alpha );
+	  beta  = Clip3( g_RCBetaMinValue,  g_RCBetaMaxValue,  beta  );
 
-      TRCParameter rcPara;
-      rcPara.m_alpha = alpha;
-      rcPara.m_beta  = beta;
-      m_encRCSeq->setPicPara( m_frameLevel, rcPara );
+	  TRCParameter rcPara;
+	  rcPara.m_alpha = alpha;
+	  rcPara.m_beta  = beta;
+	  m_encRCSeq->setPicPara( m_frameLevel, rcPara );
 
-      return;
-    }
+	  return;
+	}
 
-    calLambda = Clip3( inputLambda / 10.0, inputLambda * 10.0, calLambda );
-    alpha += m_encRCSeq->getAlphaUpdate() * ( log( inputLambda ) - log( calLambda ) ) * alpha;
-    Double lnbpp = log( picActualBpp );
-    lnbpp = Clip3( -5.0, -0.1, lnbpp );
+	calLambda = Clip3( inputLambda / 10.0, inputLambda * 10.0, calLambda );
+	alpha += m_encRCSeq->getAlphaUpdate() * ( log( inputLambda ) - log( calLambda ) ) * alpha;
+	Double lnbpp = log( picActualBpp );
+	lnbpp = Clip3( -5.0, -0.1, lnbpp );
 
-    beta  += m_encRCSeq->getBetaUpdate() * ( log( inputLambda ) - log( calLambda ) ) * lnbpp;
+	beta  += m_encRCSeq->getBetaUpdate() * ( log( inputLambda ) - log( calLambda ) ) * lnbpp;
 
-    alpha = Clip3( g_RCAlphaMinValue, g_RCAlphaMaxValue, alpha );
-    beta  = Clip3( g_RCBetaMinValue,  g_RCBetaMaxValue,  beta  );
+	alpha = Clip3( g_RCAlphaMinValue, g_RCAlphaMaxValue, alpha );
+	beta  = Clip3( g_RCBetaMinValue,  g_RCBetaMaxValue,  beta  );
   }
 
   TRCParameter rcPara;
@@ -1101,9 +1108,9 @@ Void TEncRCPic::updateAfterPicture( Int actualHeaderBits, Int actualTotalBits, D
 
   if ( m_frameLevel == 1 )
   {
-    Double currLambda = Clip3( 0.1, 10000.0, m_picLambda );
-    Double updateLastLambda = g_RCWeightHistoryLambda * m_encRCSeq->getLastLambda() + g_RCWeightCurrentLambda * currLambda;
-    m_encRCSeq->setLastLambda( updateLastLambda );
+	Double currLambda = Clip3( 0.1, 10000.0, m_picLambda );
+	Double updateLastLambda = g_RCWeightHistoryLambda * m_encRCSeq->getLastLambda() + g_RCWeightCurrentLambda * currLambda;
+	m_encRCSeq->setLastLambda( updateLastLambda );
   }
 }
 
@@ -1114,11 +1121,11 @@ Int TEncRCPic::getRefineBitsForIntra( Int orgBits )
 
   if (orgBits*40 < m_numberOfPixel)
   {
-    alpha=0.25;
+	alpha=0.25;
   }
   else
   {
-    alpha=0.30;
+	alpha=0.30;
   }
 
   iIntraBits = (Int)(alpha* pow(m_totalCostIntra*4.0/(Double)orgBits, beta)*(Double)orgBits+0.5);
@@ -1149,8 +1156,8 @@ Void TEncRCPic::getLCUInitTargetBits()
   m_remainingCostIntra = m_totalCostIntra;
   for (Int i=m_numberOfLCU-1; i>=0; i--)
   {
-    iAvgBits += Int(m_targetBits * getLCU(i).m_costIntra/m_totalCostIntra);
-    getLCU(i).m_targetBitsLeft = iAvgBits;
+	iAvgBits += Int(m_targetBits * getLCU(i).m_costIntra/m_totalCostIntra);
+	getLCU(i).m_targetBitsLeft = iAvgBits;
   }
 }
 
@@ -1169,11 +1176,11 @@ Double TEncRCPic::getLCUEstLambdaAndQP(Double bpp, Int clipPicQP, Int *estQP)
   Int clipNeighbourQP = g_RCInvalidQPValue;
   for (Int i=LCUIdx-1; i>=0; i--)
   {
-    if ((getLCU(i)).m_QP > g_RCInvalidQPValue)
-    {
-      clipNeighbourQP = getLCU(i).m_QP;
-      break;
-    }
+	if ((getLCU(i)).m_QP > g_RCInvalidQPValue)
+	{
+	  clipNeighbourQP = getLCU(i).m_QP;
+	  break;
+	}
   }
 
   Int minQP = clipPicQP - 2;
@@ -1181,8 +1188,8 @@ Double TEncRCPic::getLCUEstLambdaAndQP(Double bpp, Int clipPicQP, Int *estQP)
 
   if ( clipNeighbourQP > g_RCInvalidQPValue )
   {
-    maxQP = min(clipNeighbourQP + 1, maxQP);
-    minQP = max(clipNeighbourQP - 1, minQP);
+	maxQP = min(clipNeighbourQP + 1, maxQP);
+	minQP = max(clipNeighbourQP - 1, minQP);
   }
 
   Double maxLambda=exp(((Double)(maxQP+0.49)-13.7122)/4.2005);
@@ -1212,19 +1219,19 @@ Void TEncRateCtrl::destroy()
 {
   if ( m_encRCSeq != NULL )
   {
-    delete m_encRCSeq;
-    m_encRCSeq = NULL;
+	delete m_encRCSeq;
+	m_encRCSeq = NULL;
   }
   if ( m_encRCGOP != NULL )
   {
-    delete m_encRCGOP;
-    m_encRCGOP = NULL;
+	delete m_encRCGOP;
+	m_encRCGOP = NULL;
   }
   while ( m_listRCPictures.size() > 0 )
   {
-    TEncRCPic* p = m_listRCPictures.front();
-    m_listRCPictures.pop_front();
-    delete p;
+	TEncRCPic* p = m_listRCPictures.front();
+	m_listRCPictures.pop_front();
+	delete p;
   }
 }
 
@@ -1235,22 +1242,23 @@ Void TEncRateCtrl::init( Int totalFrames, Int targetBitrate, Int frameRate, Int 
   Bool isLowdelay = true;
   for ( Int i=0; i<GOPSize-1; i++ )
   {
-    if ( GOPList[i].m_POC > GOPList[i+1].m_POC )
-    {
-      isLowdelay = false;
-      break;
-    }
+	if ( GOPList[i].m_POC > GOPList[i+1].m_POC )
+	{
+	  isLowdelay = false;
+	  break;
+	}
   }
 
   Int numberOfLevel = 1;
   Int adaptiveBit = 0;
+  // Derek, GOP_SIZE[1, 2, 4, 8, 16] = LEVEL[1, 2, 3, 4, 5]
   if ( keepHierBits > 0 )
   {
-    numberOfLevel = Int( log((Double)GOPSize)/log(2.0) + 0.5 ) + 1;
+	numberOfLevel = Int( log((Double)GOPSize)/log(2.0) + 0.5 ) + 1;
   }
   if ( !isLowdelay && GOPSize == 8 )
   {
-    numberOfLevel = Int( log((Double)GOPSize)/log(2.0) + 0.5 ) + 1;
+	numberOfLevel = Int( log((Double)GOPSize)/log(2.0) + 0.5 ) + 1;
   }
   numberOfLevel++;    // intra picture
   numberOfLevel++;    // non-reference picture
@@ -1260,152 +1268,153 @@ Void TEncRateCtrl::init( Int totalFrames, Int targetBitrate, Int frameRate, Int 
   bitsRatio = new Int[ GOPSize ];
   for ( Int i=0; i<GOPSize; i++ )
   {
-    bitsRatio[i] = 10;
-    if ( !GOPList[i].m_refPic )
-    {
-      bitsRatio[i] = 2;
-    }
+	bitsRatio[i] = 10;
+	if ( !GOPList[i].m_refPic )
+	{
+	  bitsRatio[i] = 2;
+	}
   }
 
   if ( keepHierBits > 0 )
   {
-    Double bpp = (Double)( targetBitrate / (Double)( frameRate*picWidth*picHeight ) );
-    if ( GOPSize == 4 && isLowdelay )
-    {
-      if ( bpp > 0.2 )
-      {
-        bitsRatio[0] = 2;
-        bitsRatio[1] = 3;
-        bitsRatio[2] = 2;
-        bitsRatio[3] = 6;
-      }
-      else if( bpp > 0.1 )
-      {
-        bitsRatio[0] = 2;
-        bitsRatio[1] = 3;
-        bitsRatio[2] = 2;
-        bitsRatio[3] = 10;
-      }
-      else if ( bpp > 0.05 )
-      {
-        bitsRatio[0] = 2;
-        bitsRatio[1] = 3;
-        bitsRatio[2] = 2;
-        bitsRatio[3] = 12;
-      }
-      else
-      {
-        bitsRatio[0] = 2;
-        bitsRatio[1] = 3;
-        bitsRatio[2] = 2;
-        bitsRatio[3] = 14;
-      }
+	  // Derek, not including chroma for this?
+	Double bpp = (Double)( targetBitrate / (Double)( frameRate*picWidth*picHeight ) );
+	if ( GOPSize == 4 && isLowdelay )
+	{
+	  if ( bpp > 0.2 )
+	  {
+		bitsRatio[0] = 2;
+		bitsRatio[1] = 3;
+		bitsRatio[2] = 2;
+		bitsRatio[3] = 6;
+	  }
+	  else if( bpp > 0.1 )
+	  {
+		bitsRatio[0] = 2;
+		bitsRatio[1] = 3;
+		bitsRatio[2] = 2;
+		bitsRatio[3] = 10;
+	  }
+	  else if ( bpp > 0.05 )
+	  {
+		bitsRatio[0] = 2;
+		bitsRatio[1] = 3;
+		bitsRatio[2] = 2;
+		bitsRatio[3] = 12;
+	  }
+	  else
+	  {
+		bitsRatio[0] = 2;
+		bitsRatio[1] = 3;
+		bitsRatio[2] = 2;
+		bitsRatio[3] = 14;
+	  }
 
-      if ( keepHierBits == 2 )
-      {
-        adaptiveBit = 1;
-      }
-    }
-    else if ( GOPSize == 8 && !isLowdelay )
-    {
-      if ( bpp > 0.2 )
-      {
-        bitsRatio[0] = 15;
-        bitsRatio[1] = 5;
-        bitsRatio[2] = 4;
-        bitsRatio[3] = 1;
-        bitsRatio[4] = 1;
-        bitsRatio[5] = 4;
-        bitsRatio[6] = 1;
-        bitsRatio[7] = 1;
-      }
-      else if ( bpp > 0.1 )
-      {
-        bitsRatio[0] = 20;
-        bitsRatio[1] = 6;
-        bitsRatio[2] = 4;
-        bitsRatio[3] = 1;
-        bitsRatio[4] = 1;
-        bitsRatio[5] = 4;
-        bitsRatio[6] = 1;
-        bitsRatio[7] = 1;
-      }
-      else if ( bpp > 0.05 )
-      {
-        bitsRatio[0] = 25;
-        bitsRatio[1] = 7;
-        bitsRatio[2] = 4;
-        bitsRatio[3] = 1;
-        bitsRatio[4] = 1;
-        bitsRatio[5] = 4;
-        bitsRatio[6] = 1;
-        bitsRatio[7] = 1;
-      }
-      else
-      {
-        bitsRatio[0] = 30;
-        bitsRatio[1] = 8;
-        bitsRatio[2] = 4;
-        bitsRatio[3] = 1;
-        bitsRatio[4] = 1;
-        bitsRatio[5] = 4;
-        bitsRatio[6] = 1;
-        bitsRatio[7] = 1;
-      }
+	  if ( keepHierBits == 2 )
+	  {
+		adaptiveBit = 1;
+	  }
+	}
+	else if ( GOPSize == 8 && !isLowdelay )
+	{
+	  if ( bpp > 0.2 )
+	  {
+		bitsRatio[0] = 15;
+		bitsRatio[1] = 5;
+		bitsRatio[2] = 4;
+		bitsRatio[3] = 1;
+		bitsRatio[4] = 1;
+		bitsRatio[5] = 4;
+		bitsRatio[6] = 1;
+		bitsRatio[7] = 1;
+	  }
+	  else if ( bpp > 0.1 )
+	  {
+		bitsRatio[0] = 20;
+		bitsRatio[1] = 6;
+		bitsRatio[2] = 4;
+		bitsRatio[3] = 1;
+		bitsRatio[4] = 1;
+		bitsRatio[5] = 4;
+		bitsRatio[6] = 1;
+		bitsRatio[7] = 1;
+	  }
+	  else if ( bpp > 0.05 )
+	  {
+		bitsRatio[0] = 25;
+		bitsRatio[1] = 7;
+		bitsRatio[2] = 4;
+		bitsRatio[3] = 1;
+		bitsRatio[4] = 1;
+		bitsRatio[5] = 4;
+		bitsRatio[6] = 1;
+		bitsRatio[7] = 1;
+	  }
+	  else
+	  {
+		bitsRatio[0] = 30;
+		bitsRatio[1] = 8;
+		bitsRatio[2] = 4;
+		bitsRatio[3] = 1;
+		bitsRatio[4] = 1;
+		bitsRatio[5] = 4;
+		bitsRatio[6] = 1;
+		bitsRatio[7] = 1;
+	  }
 
-      if ( keepHierBits == 2 )
-      {
-        adaptiveBit = 2;
-      }
-    }
-    else
-    {
-      printf( "\n hierarchical bit allocation is not support for the specified coding structure currently.\n" );
-    }
+	  if ( keepHierBits == 2 )
+	  {
+		adaptiveBit = 2;
+	  }
+	}
+	else
+	{
+	  printf( "\n hierarchical bit allocation is not support for the specified coding structure currently.\n" );
+	}
   }
 
   Int* GOPID2Level = new Int[ GOPSize ];
   for ( Int i=0; i<GOPSize; i++ )
   {
-    GOPID2Level[i] = 1;
-    if ( !GOPList[i].m_refPic )
-    {
-      GOPID2Level[i] = 2;
-    }
+	GOPID2Level[i] = 1;
+	if ( !GOPList[i].m_refPic )
+	{
+	  GOPID2Level[i] = 2;
+	}
   }
 
   if ( keepHierBits > 0 )
   {
-    if ( GOPSize == 4 && isLowdelay )
-    {
-      GOPID2Level[0] = 3;
-      GOPID2Level[1] = 2;
-      GOPID2Level[2] = 3;
-      GOPID2Level[3] = 1;
-    }
-    else if ( GOPSize == 8 && !isLowdelay )
-    {
-      GOPID2Level[0] = 1;
-      GOPID2Level[1] = 2;
-      GOPID2Level[2] = 3;
-      GOPID2Level[3] = 4;
-      GOPID2Level[4] = 4;
-      GOPID2Level[5] = 3;
-      GOPID2Level[6] = 4;
-      GOPID2Level[7] = 4;
-    }
+	if ( GOPSize == 4 && isLowdelay )
+	{
+	  GOPID2Level[0] = 3;
+	  GOPID2Level[1] = 2;
+	  GOPID2Level[2] = 3;
+	  GOPID2Level[3] = 1;
+	}
+	else if ( GOPSize == 8 && !isLowdelay )
+	{
+	  GOPID2Level[0] = 1;
+	  GOPID2Level[1] = 2;
+	  GOPID2Level[2] = 3;
+	  GOPID2Level[3] = 4;
+	  GOPID2Level[4] = 4;
+	  GOPID2Level[5] = 3;
+	  GOPID2Level[6] = 4;
+	  GOPID2Level[7] = 4;
+	}
   }
 
   if ( !isLowdelay && GOPSize == 8 )
   {
-    GOPID2Level[0] = 1;
-    GOPID2Level[1] = 2;
-    GOPID2Level[2] = 3;
-    GOPID2Level[3] = 4;
-    GOPID2Level[4] = 4;
-    GOPID2Level[5] = 3;
-    GOPID2Level[6] = 4;
-    GOPID2Level[7] = 4;
+	GOPID2Level[0] = 1;
+	GOPID2Level[1] = 2;
+	GOPID2Level[2] = 3;
+	GOPID2Level[3] = 4;
+	GOPID2Level[4] = 4;
+	GOPID2Level[5] = 3;
+	GOPID2Level[6] = 4;
+	GOPID2Level[7] = 4;
   }
 
   m_encRCSeq = new TEncRCSeq;
@@ -1415,7 +1424,7 @@ Void TEncRateCtrl::init( Int totalFrames, Int targetBitrate, Int frameRate, Int 
   m_encRCSeq->initPicPara();
   if ( useLCUSeparateModel )
   {
-    m_encRCSeq->initLCUPara();
+	m_encRCSeq->initLCUPara();
   }
   m_CpbSaturationEnabled = false;
   m_cpbSize              = targetBitrate;
@@ -1445,13 +1454,13 @@ Int  TEncRateCtrl::updateCpbState(Int actualBits)
   m_cpbState -= actualBits;
   if (m_cpbState < 0)
   {
-    cpbState = -1;
+	cpbState = -1;
   }
 
   m_cpbState += m_bufferingRate;
   if (m_cpbState > m_cpbSize)
   {
-    cpbState = 0;
+	cpbState = 0;
   }
 
   return cpbState;

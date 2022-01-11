@@ -39,6 +39,7 @@
 #include "TComSlice.h"
 #include "TComMv.h"
 #include "TComTU.h"
+#include "TLibDecoder/TDecTop.h"
 
 //! \ingroup TLibCommon
 //! \{
@@ -191,6 +192,10 @@ Void TComLoopFilter::xDeblockCU( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiD
     }
     return;
   }
+
+  // derek debug
+  //if (decTopStat.m_decFrameNum == 4 && pcCU->getCUPelX() == 448 && pcCU->getCUPelY() == 736)
+  //    uiAbsZorderIdx = uiAbsZorderIdx;
 
   xSetLoopfilterParam( pcCU, uiAbsZorderIdx );
   TComTURecurse tuRecurse(pcCU, uiAbsZorderIdx);
@@ -425,6 +430,10 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pCtu, DeblockEdgeD
   UInt uiPartP;
   const TComDataCU* pcCUP;
   UInt uiBs = 0;
+
+  // derek debug
+  //if (decTopStat.m_decFrameNum == 4 && pCtu->getCUPelX() == 448 && pCtu->getCUPelY() == 736)
+  //    uiBs = uiBs;
 
   //-- Calculate Block Index
   if (edgeDir == EDGE_VER)

@@ -36,6 +36,7 @@
 */
 
 #include "TDecCu.h"
+#include "TDecTop.h"
 #include "TLibCommon/TComTU.h"
 #include "TLibCommon/TComPrediction.h"
 
@@ -332,6 +333,10 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   // prediction mode ( Intra : direction mode, Inter : Mv, reference idx )
   m_pcEntropyDecoder->decodePredInfo( pcCU, uiAbsPartIdx, uiDepth, m_ppcCU[uiDepth]);
 
+//#if CTU_STAT_EN
+  decTopStat.m_HeaderBits += decTopStat.m_BitCnts;
+  decTopStat.m_BitCnts = 0;
+//#endif
   // Coefficient decoding
   Bool bCodeDQP = getdQPFlag();
   Bool isChromaQpAdjCoded = getIsChromaQpAdjCoded();
@@ -339,6 +344,11 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   setIsChromaQpAdjCoded( isChromaQpAdjCoded );
   setdQPFlag( bCodeDQP );
   xFinishDecodeCU( pcCU, uiAbsPartIdx, uiDepth, isLastCtuOfSliceSegment );
+
+//#if CTU_STAT_EN
+  decTopStat.m_DataBits += decTopStat.m_BitCnts;
+  decTopStat.m_BitCnts = 0;
+//#endif
 }
 
 Void TDecCu::xFinishDecodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool &isLastCtuOfSliceSegment)

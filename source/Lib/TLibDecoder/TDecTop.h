@@ -190,5 +190,87 @@ private:
 
 //! \}
 
+#define RC_STAT_EN          1
+#define CTU_STAT_EN         0
+#define WEIGHTING_MID_TAP   5
+#define WEIGHTING_SIZE      (WEIGHTING_MID_TAP * 2 + 1)
+
+typedef struct dec_frame_stat
+{
+    int   frame_POC;
+    int   frame_SliceQP;
+    int   frame_AvgQP;
+    int   frame_maxQP;
+    int   frame_minQP;
+    int   slice_type;
+    int   frameBits;   // without 0x02 0x03 and CABAC_ZERO_WORD, that is, only RBSP size
+    int   SAOBits;
+    int   HdrBits;
+    int   DataBits;
+    int   IBits;
+    int   PBits;
+    int   Flicker;
+    float m_decPSNR[4];
+    float m_decSSIM[4];
+    float m_decMSE[3];
+}DecFrameStat;
+
+typedef struct dec_ctu_stat
+{
+    int m_ctuHeaderBits;    // includes YUV, in raster scan
+    int m_ctuDataBits;
+    //int m_QP;
+    int m_avgQP;
+    int m_minQP;
+    int m_maxQP;
+    float m_ctuPSNR[4];
+    float m_ctuMSE[3];
+}DecCTUStat;
+
+typedef struct dec_top_stat
+{
+    int    m_isCTUInit;
+    int    m_decFrameNum;
+    //int    m_decCTUNum;
+    int    m_frameWidth;
+    int    m_frameHeight;
+    int    m_MaxCpbSize;
+    int    m_targetCpbSize;
+    int    m_targetRate;
+    int    m_GOPnum;
+    int    m_maxQP;
+    int    m_minQP;
+    int    m_avgFlick;
+    int    m_frameBits;    // temp variable
+    int    m_SAOBits;    // temp variable
+    int    m_HdrBits;    // temp variable
+    int    m_DBits;    // temp variable
+    int    m_IBits;    // temp variable
+    int    m_PBits;    // temp variable
+    int    m_NALUFullByte; // temp variable
+    int    m_HeaderBits;  // temp variable
+    int    m_DataBits;    // temp variable
+    int    m_BitCnts;     // temp variable
+    
+    Double  weights[WEIGHTING_SIZE][WEIGHTING_SIZE];
+    FILE*   m_source_fp;
+    string  streamName;
+
+    DecCTUStat *CTUStat;
+    vector<DecFrameStat>    FrameStat;
+#if SMD5
+    context_md5_t md5ctx;
+#endif
+} DecTopStat;
+extern DecTopStat decTopStat;
+
+void Dec_Stat_Init();
+void Dec_Stat_DeInit();
+void Dec_CTUStat_Init(const TComSPS* sps, const TComPPS* pps);
+void Dec_CTUStat_DeInit();
+void Dec_Calc_PSNR_SSIM(TComPic* pcPic, int* decFrameLimit);
+void Print_RC_Stat();
+void Print_CTU_Stat(TComPic* pcPic);
+
 #endif // __TDECTOP__
 

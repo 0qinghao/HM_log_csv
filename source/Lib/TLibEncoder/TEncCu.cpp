@@ -493,6 +493,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     iMinQP = m_pcRateCtrl->getRCQP();
     iMaxQP = m_pcRateCtrl->getRCQP();
   }
+#if CUSTOM_RC
+  if (encTopCRC.CRCEn && encTopCRC.CRCCtuEn)
+  {
+      iMinQP = encTopCRC.CRCCtuQP;
+      iMaxQP = encTopCRC.CRCCtuQP;
+  }
+  else if (encTopCRC.CRCEn)
+  {
+      iMinQP = encTopCRC.CRCPicQP;
+      iMaxQP = encTopCRC.CRCPicQP;
+  }
+#endif
 
   // transquant-bypass (TQB) processing loop variable initialisation ---
 
@@ -750,17 +762,33 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
              ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
             )))
         {
-#endif 
+#endif
+        #if TU08_V0
+          if (uiDepth == sps.getLog2DiffMaxMinCodingBlockSize())
+            xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug) );
+        #elif TU16_V0
+          if (uiDepth == sps.getLog2DiffMaxMinCodingBlockSize())
+            xCheckRDCostIntra(rpcBestCU, rpcTempCU, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug));
+        #else
           xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
+        
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
           if( uiDepth == sps.getLog2DiffMaxMinCodingBlockSize() )
           {
-            if( rpcTempCU->getWidth(0) > ( 1 << sps.getQuadtreeTULog2MinSize() ) )
+              int is_P = MOL_TU8 ? pcSlice->getSliceType() != I_SLICE : 0;
+        #if TU_CU == 0
+            if( rpcTempCU->getWidth(0) > ( 1 << (sps.getQuadtreeTULog2MinSize()+is_P)) )
             {
+            #if TU16_V1
+              xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug)   );
+            #else
               xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_NxN DEBUG_STRING_PASS_INTO(sDebug)   );
+            #endif
               rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
             }
+        #endif
           }
+        #endif
         }
 
         // test PCM
@@ -831,6 +859,18 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
     iMinQP = m_pcRateCtrl->getRCQP();
     iMaxQP = m_pcRateCtrl->getRCQP();
   }
+#if CUSTOM_RC
+  if (encTopCRC.CRCEn && encTopCRC.CRCCtuEn)
+  {
+      iMinQP = encTopCRC.CRCCtuQP;
+      iMaxQP = encTopCRC.CRCCtuQP;
+  }
+  else if (encTopCRC.CRCEn)
+  {
+      iMinQP = encTopCRC.CRCPicQP;
+      iMaxQP = encTopCRC.CRCPicQP;
+  }
+#endif
 
   if ( m_pcEncCfg->getCUTransquantBypassFlagForceValue() )
   {
@@ -1114,6 +1154,24 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     return;
   }
 
+#if CUSTOM_RC
+  // Find Type ratio
+  if(encTopStat.m_isTrial == 0)
+  {
+      const int frame_sw = encTopStat.m_encFrameNum & 0x1;
+      int ctuRsAddr = pcCU->getCtuRsAddr();
+      int iWidth = pcCU->getWidth(uiAbsPartIdx);
+      int iHeight = pcCU->getHeight(uiAbsPartIdx);
+      int num8x8 = (iWidth >> 3) * (iHeight >> 3);
+      if (pcCU->isSkipped(uiAbsPartIdx))
+          encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuType[0] += num8x8;
+      else if (pcCU->isIntra(uiAbsPartIdx))
+          encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuType[2] += num8x8;
+      else
+          encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuType[1] += num8x8;
+  }
+#endif
+
   if( uiDepth <= pps.getMaxCuDQPDepth() && pps.getUseDQP())
   {
     setdQPFlag(true);
@@ -1159,6 +1217,14 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
   // prediction Info ( Intra : direction mode, Inter : Mv, reference idx )
   m_pcEntropyCoder->encodePredInfo( pcCU, uiAbsPartIdx );
 
+#if CUSTOM_RC
+  if (encTopStat.m_isTrial == 0)
+  {
+      encTopStat.m_HeaderBits += (m_pcEntropyCoder->getNumberOfWrittenBits() - encTopStat.m_BitCnts);
+      encTopStat.m_BitCnts = m_pcEntropyCoder->getNumberOfWrittenBits();
+  }
+#endif
+
   // Encode Coefficients
   Bool bCodeDQP = getdQPFlag();
   Bool codeChromaQpAdj = getCodeChromaQpAdjFlag();
@@ -1168,6 +1234,14 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
 
   // --- write terminating bit ---
   finishCU(pcCU,uiAbsPartIdx);
+
+#if CUSTOM_RC
+  if (encTopStat.m_isTrial == 0)
+  {
+      encTopStat.m_DataBits += (m_pcEntropyCoder->getNumberOfWrittenBits() - encTopStat.m_BitCnts);
+      encTopStat.m_BitCnts = m_pcEntropyCoder->getNumberOfWrittenBits();
+  }
+#endif
 }
 
 Int xCalcHADs8x8_ISlice(Pel *piOrg, Int iStrideOrg)
@@ -1340,6 +1414,8 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
   }
   DEBUG_STRING_NEW(bestStr)
 
+  // derek, uiNoResidual = 0 : check merge, try all mergeCandidx, do Q, check if CBF=0, earlySkip = 1
+  // uiNoResidual = 1 : check skip, force res to 0
   for( UInt uiNoResidual = 0; uiNoResidual < iteration; ++uiNoResidual )
   {
     for( UInt uiMergeCand = 0; uiMergeCand < numValidMergeCand; ++uiMergeCand )

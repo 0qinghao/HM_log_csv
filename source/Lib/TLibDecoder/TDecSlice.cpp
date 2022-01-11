@@ -35,6 +35,7 @@
     \brief    slice decoder class
 */
 
+#include "TDecTop.h"
 #include "TDecSlice.h"
 #include "TDecConformance.h"
 
@@ -136,6 +137,11 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
     const UInt uiSubStrm=pcPic->getSubstreamForCtuAddr(ctuRsAddr, true, pcSlice)-subStreamOffset;
     TComDataCU* pCtu = pcPic->getCtu( ctuRsAddr );
     pCtu->initCtu( pcPic, ctuRsAddr );
+//#if CTU_STAT_EN
+    decTopStat.m_HeaderBits = 0;
+    decTopStat.m_DataBits = 0;
+    decTopStat.m_BitCnts = 0;
+//#endif
 
     m_pcEntropyDecoder->setBitstream( ppcSubstreams[uiSubStrm] );
 
@@ -208,6 +214,9 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
         }
 
         pcSbacDecoder->parseSAOBlkParam( saoblkParam, sliceEnabled, leftMergeAvail, aboveMergeAvail, pcSlice->getSPS()->getBitDepths());
+#if RC_STAT_EN
+        decTopStat.m_SAOBits += decTopStat.m_BitCnts;
+#endif
       }
     }
 
@@ -258,6 +267,46 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
 #endif
     }
 
+
+    if (ctuRsAddr == 123)
+        ctuTsAddr = ctuTsAddr;
+    // Derek Avg QP
+    int PartIdxNum = 0;
+    int QPSum = 0;
+    decTopStat.CTUStat[ctuRsAddr].m_maxQP = 0;
+    decTopStat.CTUStat[ctuRsAddr].m_minQP = 0xFF;
+    for (int i = 0; i < pCtu->getTotalNumPart(); i++)
+    {
+        if ((!pCtu->isSkipped(i)) && pCtu->getQP(i))
+        {
+            int qp_val = pCtu->getQP(i);
+            PartIdxNum++;
+            QPSum += qp_val;
+            decTopStat.CTUStat[ctuRsAddr].m_maxQP = max(qp_val, decTopStat.CTUStat[ctuRsAddr].m_maxQP);
+            decTopStat.CTUStat[ctuRsAddr].m_minQP = min(qp_val, decTopStat.CTUStat[ctuRsAddr].m_minQP);
+        }
+    }
+    if (PartIdxNum != 0)
+        decTopStat.CTUStat[ctuRsAddr].m_avgQP = (QPSum + (PartIdxNum >> 1)) / PartIdxNum;
+    else
+    {
+        decTopStat.CTUStat[ctuRsAddr].m_avgQP = 0;
+        decTopStat.CTUStat[ctuRsAddr].m_maxQP = 0;
+        decTopStat.CTUStat[ctuRsAddr].m_minQP = 0xFF;
+    }
+//#if CTU_STAT_EN
+    decTopStat.m_HeaderBits += decTopStat.m_BitCnts;
+    decTopStat.CTUStat[ctuRsAddr].m_ctuHeaderBits = decTopStat.m_HeaderBits;
+    decTopStat.CTUStat[ctuRsAddr].m_ctuDataBits = decTopStat.m_DataBits;
+    //decTopStat.CTUStat[ctuRsAddr].m_QP = pCtu->getQP(0);
+    decTopStat.m_HeaderBits = 0;
+    decTopStat.m_DataBits = 0;
+    decTopStat.m_BitCnts = 0;
+//#endif
+#if RC_STAT_EN
+    decTopStat.m_HdrBits += decTopStat.CTUStat[ctuRsAddr].m_ctuHeaderBits;
+    decTopStat.m_DBits += decTopStat.CTUStat[ctuRsAddr].m_ctuDataBits;
+#endif
   }
 
   assert(isLastCtuOfSliceSegment == true);

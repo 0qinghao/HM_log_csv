@@ -610,6 +610,20 @@ Void TAppEncTop::encode()
   TExt360AppEncTop           ext360(*this, m_cTEncTop.getGOPEncoder()->getExt360Data(), *(m_cTEncTop.getGOPEncoder()), *pcPicYuvOrg);
 #endif
 
+#if CHK_RDO_HAD
+  g_RatioSum = 0;
+  fp_RDOHAD = fopen("RDO_HAD.txt", "w");
+#endif
+
+#if CUSTOM_RC
+  if (m_CRCEnable)
+  {
+      CRC_Seq_Init();
+  }
+  Enc_Init_Text(m_iSourceWidth, m_iSourceHeight, m_uiMaxCUWidth);
+#endif
+  encTopStat.m_encFrameNum = 0;
+
   while ( !bEos )
   {
     // get buffers
@@ -644,6 +658,11 @@ Void TAppEncTop::encode()
       m_cTEncTop.setFramesToBeEncoded(m_iFrameRcvd);
     }
 
+#if CHK_RDO_HAD
+    g_RDOTotalNum = 0;
+    g_HADEqRDONum = 0;
+#endif
+
     // call encoding function for one frame
     if ( m_isField )
     {
@@ -665,6 +684,10 @@ Void TAppEncTop::encode()
     {
       m_cTVideoIOYuvInputFile.skipFrames(m_temporalSubsampleRatio-1, m_inputFileWidth, m_inputFileHeight, m_InputChromaFormatIDC);
     }
+#if CHK_RDO_HAD
+    g_RatioSum += (double)g_HADEqRDONum / g_RDOTotalNum;
+    fprintf(fp_RDOHAD, "F%d Final Ratio = %d / %d = %%%.2f\n", encTopStat.m_encFrameNum-1, g_HADEqRDONum, g_RDOTotalNum, (double)100 * g_HADEqRDONum / g_RDOTotalNum);
+#endif
   }
 
   m_cTEncTop.printSummary(m_isField);
@@ -683,6 +706,16 @@ Void TAppEncTop::encode()
   xDestroyLib();
 
   printRateSummary();
+
+#if CUSTOM_RC
+  Print_Frame_Stat();
+  Enc_DeInit_Text();
+#endif
+
+#if CHK_RDO_HAD
+  fprintf(fp_RDOHAD, "Final Ratio = %%%.2f\n", 100 * g_RatioSum / encTopStat.m_encFrameNum);
+  fclose(fp_RDOHAD);
+#endif
 
   return;
 }

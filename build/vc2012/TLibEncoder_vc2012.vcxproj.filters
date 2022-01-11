@@ -68,6 +68,12 @@
     <ClCompile Include="..\..\source\Lib\TLibEncoder\SEIEncoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\Lib\EncMolRC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\Lib\EncPreAnalysis.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\Lib\TLibEncoder\AnnexBwrite.h">

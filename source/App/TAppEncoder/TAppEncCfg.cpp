@@ -45,6 +45,7 @@
 #include "TAppEncCfg.h"
 #include "TAppCommon/program_options_lite.h"
 #include "TLibEncoder/TEncRateCtrl.h"
+#include "TLibEncoder/TEncTop.h"
 #ifdef WIN32
 #define strdup _strdup
 #endif
@@ -999,6 +1000,11 @@ Bool TAppEncCfg::parseCfg( Int argc, TChar* argv[] )
   ( "RCCpbSaturation",                                m_RCCpbSaturationEnabled,                         false, "Rate control: enable target bits saturation to avoid CPB overflow and underflow" )
   ( "RCCpbSize",                                      m_RCCpbSize,                                         0u, "Rate control: CPB size" )
   ( "RCInitialCpbFullness",                           m_RCInitialCpbFullness,                             0.9, "Rate control: initial CPB fullness" )
+  ( "CustomRC",                                       m_CRCEnable,                                      false, "Rate control: enable custom rate control")
+  ( "CustomCtuRC",                                    m_CRCCtuEnable,                                   false, "Rate control: enable custom ctu-level rate control")
+  ( "CustomRCCpb",                                    m_CRCCpbEnable,                                   false, "Rate control: enable custom rate control CPB check")
+  ( "CRCTargetBit",                                   m_CRCTargetBitrate,                                   0, "Rate control: target bitrate for custom rate control")
+  ( "CRCInitialQP",                                   m_CRCInitialQP,                                       0, "Rate control: initial QP for custom rate control")
   ("TransquantBypassEnable",                          m_TransquantBypassEnabledFlag,                    false, "transquant_bypass_enabled_flag indicator in PPS")
   ("TransquantBypassEnableFlag",                      m_TransquantBypassEnabledFlag,                    false, "deprecated alias for TransquantBypassEnable")
   ("CUTransquantBypassFlagForce",                     m_CUTransquantBypassFlagForce,                    false, "Force transquant bypass mode, when transquant_bypass_enabled_flag is enabled")
@@ -2990,6 +2996,15 @@ Void TAppEncCfg::xPrintParameter()
       printf("InitalCpbFullness                      : %.2f\n", m_RCInitialCpbFullness);
     }
   }
+#if CUSTOM_RC
+  if (m_CRCEnable)
+  {
+      printf("CustomCtuRC                           : %d\n", m_CRCCtuEnable);
+      printf("CustomRCCpb                           : %d\n", m_CRCCpbEnable);
+      printf("CRCTargetBit                           : %d\n", m_CRCTargetBitrate);
+      printf("CRCInitialQP                           : %d\n", m_CRCInitialQP);
+  }
+#endif
 
   printf("Max Num Merge Candidates               : %d\n", m_maxNumMergeCand);
   printf("\n");

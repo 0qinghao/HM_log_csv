@@ -41,6 +41,7 @@
 #include "TEncSearch.h"
 #include "TLibCommon/TComTU.h"
 #include "TLibCommon/Debug.h"
+#include "TEncTop.h"
 #include <math.h>
 #include <limits>
 
@@ -1444,8 +1445,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   const UInt    uiFullDepth   = rTu.GetTransformDepthTotal();
   const UInt    uiTrDepth     = rTu.GetTransformDepthRel();
   const UInt    uiLog2TrSize  = rTu.GetLog2LumaTrSize();
+        int     is_P = MOL_TU8 ? pcCU->getSlice()->getSliceType() != I_SLICE : 0;
         Bool    bCheckFull    = ( uiLog2TrSize  <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() );
-        Bool    bCheckSplit   = ( uiLog2TrSize  >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );
+        Bool    bCheckSplit   = ( uiLog2TrSize  >  (pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx)+is_P) );
 
         Pel     resiLumaSplit [NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
         Pel     resiLumaSingle[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
@@ -2257,190 +2259,214 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
   do
   {
-    const UInt uiPartOffset=tuRecurseWithPU.GetAbsPartIdxTU();
-//  for( UInt uiPU = 0, uiPartOffset=0; uiPU < uiNumPU; uiPU++, uiPartOffset += uiQNumParts )
-  //{
-    //===== init pattern for luma prediction =====
-    DEBUG_STRING_NEW(sTemp2)
+      const UInt uiPartOffset = tuRecurseWithPU.GetAbsPartIdxTU();
+      //  for( UInt uiPU = 0, uiPartOffset=0; uiPU < uiNumPU; uiPU++, uiPartOffset += uiQNumParts )
+        //{
+          //===== init pattern for luma prediction =====
+      DEBUG_STRING_NEW(sTemp2)
 
-    //===== determine set of modes to be tested (using prediction signal only) =====
-    Int numModesAvailable     = 35; //total number of Intra modes
-    UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
-    Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];
+          //===== determine set of modes to be tested (using prediction signal only) =====
+          Int numModesAvailable = 35; //total number of Intra modes
+      UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
+      Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled() ? g_aucIntraModeNumFast_UseMPM[uiWidthBit] : g_aucIntraModeNumFast_NotUseMPM[uiWidthBit];
 
-    // this should always be true
-    assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
-    initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );
+      // this should always be true
+      assert(tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
+      initIntraPatternChType(tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2));
 
-    Bool doFastSearch = (numModesForFullRD != numModesAvailable);
-    if (doFastSearch)
-    {
-      assert(numModesForFullRD < numModesAvailable);
-
-      for( Int i=0; i < numModesForFullRD; i++ )
+      Bool doFastSearch = (numModesForFullRD != numModesAvailable);
+      if (doFastSearch)
       {
-        CandCostList[ i ] = MAX_DOUBLE;
-      }
-      CandNum = 0;
+          assert(numModesForFullRD < numModesAvailable);
 
-      const TComRectangle &puRect=tuRecurseWithPU.getRect(COMPONENT_Y);
-      const UInt uiAbsPartIdx=tuRecurseWithPU.GetAbsPartIdxTU();
+          for (Int i = 0; i < numModesForFullRD; i++)
+          {
+              CandCostList[i] = MAX_DOUBLE;
+          }
+          CandNum = 0;
 
-      Pel* piOrg         = pcOrgYuv ->getAddr( COMPONENT_Y, uiAbsPartIdx );
-      Pel* piPred        = pcPredYuv->getAddr( COMPONENT_Y, uiAbsPartIdx );
-      UInt uiStride      = pcPredYuv->getStride( COMPONENT_Y );
-      DistParam distParam;
-      const Bool bUseHadamard=pcCU->getCUTransquantBypass(0) == 0;
-      m_pcRdCost->setDistParam(distParam, sps.getBitDepth(CHANNEL_TYPE_LUMA), piOrg, uiStride, piPred, uiStride, puRect.width, puRect.height, bUseHadamard);
-      distParam.bApplyWeight = false;
-      for( Int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++ )
-      {
-        UInt       uiMode = modeIdx;
-        Distortion uiSad  = 0;
+          const TComRectangle& puRect = tuRecurseWithPU.getRect(COMPONENT_Y);
+          const UInt uiAbsPartIdx = tuRecurseWithPU.GetAbsPartIdxTU();
 
-        const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+          Pel* piOrg = pcOrgYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
+          Pel* piPred = pcPredYuv->getAddr(COMPONENT_Y, uiAbsPartIdx);
+          UInt uiStride = pcPredYuv->getStride(COMPONENT_Y);
+          DistParam distParam;
+          const Bool bUseHadamard = pcCU->getCUTransquantBypass(0) == 0;
+          m_pcRdCost->setDistParam(distParam, sps.getBitDepth(CHANNEL_TYPE_LUMA), piOrg, uiStride, piPred, uiStride, puRect.width, puRect.height, bUseHadamard);
+          distParam.bApplyWeight = false;
+          for (Int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++)
+          {
+              UInt       uiMode = modeIdx;
+              Distortion uiSad = 0;
 
-        predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
+              const Bool bUseFilter = TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
 
-        // use hadamard transform here
-        uiSad+=distParam.DistFunc(&distParam);
+              predIntraAng(COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode));
 
-        UInt   iModeBits = 0;
+              // use hadamard transform here
+              uiSad += distParam.DistFunc(&distParam);
 
-        // NB xModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
-        iModeBits+=xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA );
+              UInt   iModeBits = 0;
 
-        Double cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
+              // NB xModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
+              iModeBits += xModeBitsIntra(pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA);
+
+              Double cost = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
 
 #if DEBUG_INTRA_SEARCH_COSTS
-        std::cout << "1st pass mode " << uiMode << " SAD = " << uiSad << ", mode bits = " << iModeBits << ", cost = " << cost << "\n";
+              //std::cout << "1st pass mode " << uiMode << " SAD = " << uiSad << ", mode bits = " << iModeBits << ", cost = " << cost << "\n";
+              std::cout << "(" << pcCU->getCUPelX() << ", " << pcCU->getCUPelY() << ") " << "1st pass mode " << uiMode << " Size = " << puRect.width << ", Idx = " << uiAbsPartIdx << " SAD = " << uiSad << ", mode bits = " << iModeBits << ", cost = " << cost << "\n";
 #endif
 
-        CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
-      }
-
-      if (m_pcEncCfg->getFastUDIUseMPMEnabled())
-      {
-        Int uiPreds[NUM_MOST_PROBABLE_MODES] = {-1, -1, -1};
-
-        Int iMode = -1;
-        pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode );
-
-        const Int numCand = ( iMode >= 0 ) ? iMode : Int(NUM_MOST_PROBABLE_MODES);
-
-        for( Int j=0; j < numCand; j++)
-        {
-          Bool mostProbableModeIncluded = false;
-          Int mostProbableMode = uiPreds[j];
-
-          for( Int i=0; i < numModesForFullRD; i++)
-          {
-            mostProbableModeIncluded |= (mostProbableMode == uiRdModeList[i]);
+              CandNum += xUpdateCandList(uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList);
           }
-          if (!mostProbableModeIncluded)
-          {
-            uiRdModeList[numModesForFullRD++] = mostProbableMode;
-          }
-        }
-      }
-    }
-    else
-    {
-      for( Int i=0; i < numModesForFullRD; i++)
-      {
-        uiRdModeList[i] = i;
-      }
-    }
 
-    //===== check modes (using r-d costs) =====
+#if CHK_RDO_HAD
+          /*fprintf(fp_RDOHAD, "F%d, (%d,%d), HAD0 MODE=%d, Size=%d, Idx=%d, Cost=%.2f\n", encTopStat.m_encFrameNum, pcCU->getCUPelX(), pcCU->getCUPelY(),
+                 uiRdModeList[0], puRect.width, uiAbsPartIdx, CandCostList[0]);
+          fprintf(fp_RDOHAD, "F%d, (%d,%d), HAD1 MODE=%d, Size=%d, Idx=%d, Cost=%.2f\n", encTopStat.m_encFrameNum, pcCU->getCUPelX(), pcCU->getCUPelY(),
+                 uiRdModeList[1], puRect.width, uiAbsPartIdx, CandCostList[1]);*/
+#endif
+
+          if (m_pcEncCfg->getFastUDIUseMPMEnabled())
+          {
+              Int uiPreds[NUM_MOST_PROBABLE_MODES] = { -1, -1, -1 };
+
+              Int iMode = -1;
+              pcCU->getIntraDirPredictor(uiPartOffset, uiPreds, COMPONENT_Y, &iMode);
+
+              const Int numCand = (iMode >= 0) ? iMode : Int(NUM_MOST_PROBABLE_MODES);
+
+              for (Int j = 0; j < numCand; j++)
+              {
+                  Bool mostProbableModeIncluded = false;
+                  Int mostProbableMode = uiPreds[j];
+
+                  for (Int i = 0; i < numModesForFullRD; i++)
+                  {
+                      mostProbableModeIncluded |= (mostProbableMode == uiRdModeList[i]);
+                  }
+                  if (!mostProbableModeIncluded)
+                  {
+                      uiRdModeList[numModesForFullRD++] = mostProbableMode;
+                  }
+              }
+          }
+      }
+      else
+      {
+          for (Int i = 0; i < numModesForFullRD; i++)
+          {
+              uiRdModeList[i] = i;
+          }
+      }
+
+      //===== check modes (using r-d costs) =====
 #if HHI_RQT_INTRA_SPEEDUP_MOD
-    UInt   uiSecondBestMode  = MAX_UINT;
-    Double dSecondBestPUCost = MAX_DOUBLE;
+      UInt   uiSecondBestMode = MAX_UINT;
+      Double dSecondBestPUCost = MAX_DOUBLE;
 #endif
-    DEBUG_STRING_NEW(sPU)
-    UInt       uiBestPUMode  = 0;
-    Distortion uiBestPUDistY = 0;
-    Double     dBestPUCost   = MAX_DOUBLE;
+      DEBUG_STRING_NEW(sPU)
+          UInt       uiBestPUMode = 0;
+      Distortion uiBestPUDistY = 0;
+      Double     dBestPUCost = MAX_DOUBLE;
 
 #if ENVIRONMENT_VARIABLE_DEBUG_AND_TEST
-    UInt max=numModesForFullRD;
+      UInt max = numModesForFullRD;
 
-    if (DebugOptionList::ForceLumaMode.isSet())
-    {
-      max=0;  // we are forcing a direction, so don't bother with mode check
-    }
-    for ( UInt uiMode = 0; uiMode < max; uiMode++)
+      if (DebugOptionList::ForceLumaMode.isSet())
+      {
+          max = 0;  // we are forcing a direction, so don't bother with mode check
+      }
+      for (UInt uiMode = 0; uiMode < max; uiMode++)
 #else
-    for( UInt uiMode = 0; uiMode < numModesForFullRD; uiMode++ )
+      for (UInt uiMode = 0; uiMode < numModesForFullRD; uiMode++)
 #endif
-    {
-      // set luma prediction mode
-      UInt uiOrgMode = uiRdModeList[uiMode];
+      {
+          // set luma prediction mode
+          UInt uiOrgMode = uiRdModeList[uiMode];
 
-      pcCU->setIntraDirSubParts ( CHANNEL_TYPE_LUMA, uiOrgMode, uiPartOffset, uiDepth + uiInitTrDepth );
+          pcCU->setIntraDirSubParts(CHANNEL_TYPE_LUMA, uiOrgMode, uiPartOffset, uiDepth + uiInitTrDepth);
 
-      DEBUG_STRING_NEW(sMode)
-      // set context models
-      m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST] );
+          DEBUG_STRING_NEW(sMode)
+              // set context models
+              m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST]);
 
-      // determine residual for partition
-      Distortion uiPUDistY = 0;
-      Double     dPUCost   = 0.0;
+          // determine residual for partition
+          Distortion uiPUDistY = 0;
+          Double     dPUCost = 0.0;
 #if HHI_RQT_INTRA_SPEEDUP
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+          xRecurIntraCodingLumaQT(pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode));
 #else
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+          xRecurIntraCodingLumaQT(pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode));
 #endif
 
 #if DEBUG_INTRA_SEARCH_COSTS
-      std::cout << "2nd pass [luma,chroma] mode [" << Int(pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiPartOffset)) << "," << Int(pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiPartOffset)) << "] cost = " << dPUCost << "\n";
+          std::cout << "2nd pass [luma,chroma] mode [" << Int(pcCU->getIntraDir(CHANNEL_TYPE_LUMA, uiPartOffset)) << "," << Int(pcCU->getIntraDir(CHANNEL_TYPE_CHROMA, uiPartOffset)) << "] cost = " << dPUCost << "\n";
 #endif
 
-      // check r-d cost
-      if( dPUCost < dBestPUCost )
-      {
-        DEBUG_STRING_SWAP(sPU, sMode)
-#if HHI_RQT_INTRA_SPEEDUP_MOD
-        uiSecondBestMode  = uiBestPUMode;
-        dSecondBestPUCost = dBestPUCost;
-#endif
-        uiBestPUMode  = uiOrgMode;
-        uiBestPUDistY = uiPUDistY;
-        dBestPUCost   = dPUCost;
-
-        xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );
-
-        if (pps.getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
-        {
-          const Int xOffset = tuRecurseWithPU.getRect( COMPONENT_Y ).x0;
-          const Int yOffset = tuRecurseWithPU.getRect( COMPONENT_Y ).y0;
-          for (UInt storedResidualIndex = 0; storedResidualIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; storedResidualIndex++)
+          // check r-d cost
+          if (dPUCost < dBestPUCost)
           {
-            if (bMaintainResidual[storedResidualIndex])
-            {
-              xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaPU[storedResidualIndex], tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );
-            }
-          }
-        }
-
-        UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();
-
-        ::memcpy( m_puhQTTempTrIdx,  pcCU->getTransformIdx()       + uiPartOffset, uiQPartNum * sizeof( UChar ) );
-        for (UInt component = 0; component < numberValidComponents; component++)
-        {
-          const ComponentID compID = ComponentID(component);
-          ::memcpy( m_puhQTTempCbf[compID], pcCU->getCbf( compID  ) + uiPartOffset, uiQPartNum * sizeof( UChar ) );
-          ::memcpy( m_puhQTTempTransformSkipFlag[compID],  pcCU->getTransformSkip(compID)  + uiPartOffset, uiQPartNum * sizeof( UChar ) );
-        }
-      }
+              DEBUG_STRING_SWAP(sPU, sMode)
 #if HHI_RQT_INTRA_SPEEDUP_MOD
-      else if( dPUCost < dSecondBestPUCost )
+                  uiSecondBestMode = uiBestPUMode;
+              dSecondBestPUCost = dBestPUCost;
+#endif
+              uiBestPUMode = uiOrgMode;
+              uiBestPUDistY = uiPUDistY;
+              dBestPUCost = dPUCost;
+
+              xSetIntraResultLumaQT(pcRecoYuv, tuRecurseWithPU);
+
+              if (pps.getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+              {
+                  const Int xOffset = tuRecurseWithPU.getRect(COMPONENT_Y).x0;
+                  const Int yOffset = tuRecurseWithPU.getRect(COMPONENT_Y).y0;
+                  for (UInt storedResidualIndex = 0; storedResidualIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; storedResidualIndex++)
+                  {
+                      if (bMaintainResidual[storedResidualIndex])
+                      {
+                          xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaPU[storedResidualIndex], tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
+                      }
+                  }
+              }
+
+              UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();
+
+              ::memcpy(m_puhQTTempTrIdx, pcCU->getTransformIdx() + uiPartOffset, uiQPartNum * sizeof(UChar));
+              for (UInt component = 0; component < numberValidComponents; component++)
+              {
+                  const ComponentID compID = ComponentID(component);
+                  ::memcpy(m_puhQTTempCbf[compID], pcCU->getCbf(compID) + uiPartOffset, uiQPartNum * sizeof(UChar));
+                  ::memcpy(m_puhQTTempTransformSkipFlag[compID], pcCU->getTransformSkip(compID) + uiPartOffset, uiQPartNum * sizeof(UChar));
+              }
+          }
+#if HHI_RQT_INTRA_SPEEDUP_MOD
+          else if (dPUCost < dSecondBestPUCost)
+          {
+              uiSecondBestMode = uiOrgMode;
+              dSecondBestPUCost = dPUCost;
+          }
+#endif
+      } // Mode loop
+
+#if CHK_RDO_HAD
+      if (uiBestPUMode == uiRdModeList[0])
       {
-        uiSecondBestMode  = uiOrgMode;
-        dSecondBestPUCost = dPUCost;
+          g_RDOTotalNum++;
+          g_HADEqRDONum++;
+      }
+      else
+      {
+          fprintf(fp_RDOHAD, "F%d, (%d,%d), HAD MODE=(%d, %d), Size=%d, Idx=%d, Cost=(%.2f, %.2f), diff=%d\n", encTopStat.m_encFrameNum, pcCU->getCUPelX(), pcCU->getCUPelY(),
+                 uiRdModeList[0], uiRdModeList[1], tuRecurseWithPU.getRect(COMPONENT_Y).width, tuRecurseWithPU.GetAbsPartIdxTU(), CandCostList[0], CandCostList[1], (int)(CandCostList[1]-CandCostList[0]));
+          fprintf(fp_RDOHAD, "F%d, (%d,%d), RDO0 MODE=%d, Idx=%d, DistY=%d, Cost=%.2f\n", encTopStat.m_encFrameNum, pcCU->getCUPelX(), pcCU->getCUPelY(),
+                 uiBestPUMode, uiPartOffset, uiBestPUDistY, dBestPUCost);
+          g_RDOTotalNum++;
       }
 #endif
-    } // Mode loop
 
 #if HHI_RQT_INTRA_SPEEDUP
 #if HHI_RQT_INTRA_SPEEDUP_MOD
@@ -2483,6 +2509,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         uiBestPUMode  = uiOrgMode;
         uiBestPUDistY = uiPUDistY;
         dBestPUCost   = dPUCost;
+
+#if CHK_RDO_HAD
+        fprintf(fp_RDOHAD, "F%d, (%d,%d), RDO1 MODE=%d, Siz=%d, DistY=%d, Cost=%.2f\n", encTopStat.m_encFrameNum, pcCU->getCUPelX(), pcCU->getCUPelY(),
+               uiBestPUMode, tuRecurseWithPU.getRect(COMPONENT_Y).width, uiBestPUDistY, dBestPUCost);
+#endif
 
         xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );
 
@@ -2579,6 +2610,12 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
   //===== set distortion (rate and r-d costs are determined later) =====
   pcCU->getTotalDistortion() = uiOverallDistY;
+#if CUSTOM_RC
+    if (encTopStat.m_isTrial == 1)
+    {
+        pcCU->getTotalDistortionY() = uiOverallDistY;
+    }
+#endif
 }
 
 
@@ -2710,6 +2747,12 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 
       pcCU->setIntraDirSubParts( CHANNEL_TYPE_CHROMA, uiBestMode, uiPartOffset, uiDepthCU+uiInitTrDepth );
       pcCU->getTotalDistortion      () += uiBestDist;
+#if CUSTOM_RC
+      if (encTopStat.m_isTrial == 1)
+      {
+          pcCU->getTotalDistortionUV() += uiBestDist;
+      }
+#endif
     }
 
   } while (tuRecurseWithPU.nextSection(tuRecurseCU));
@@ -2823,6 +2866,8 @@ Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPre
   pcCU->getTotalBits()       = uiBits;
   pcCU->getTotalCost()       = dCost;
   pcCU->getTotalDistortion() = uiDistortion;
+  pcCU->getTotalDistortionY() = uiDistortion;
+  pcCU->getTotalDistortionUV() = uiDistortion;
 
   pcCU->copyToPic(uiDepth);
 }
@@ -3823,7 +3868,7 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
   m_pcRdCost->selectMotionLambda( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );
 
   m_pcRdCost->setPredictor  ( *pcMvPred );
-  m_pcRdCost->setCostScale  ( 2 );
+  m_pcRdCost->setCostScale  ( 2 );  // int ME
 
   setWpScalingDistParam( pcCU, iRefIdxPred, eRefPicList );
   //  Do integer search
@@ -3847,7 +3892,7 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
   }
 
   m_pcRdCost->selectMotionLambda( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );
-  m_pcRdCost->setCostScale ( 1 );
+  m_pcRdCost->setCostScale ( 1 );   // 1/2 pixel ME
 
   const Bool bIsLosslessCoded = pcCU->getCUTransquantBypass(uiPartAddr) != 0;
   xPatternSearchFracDIF( bIsLosslessCoded, &cPattern, piRefY, iRefStride, &rcMv, cMvHalf, cMvQter, ruiCost );
@@ -4612,8 +4657,20 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
       const ComponentID compID=ComponentID(comp);
       const UInt csx=pcYuvOrg->getComponentScaleX(compID);
       const UInt csy=pcYuvOrg->getComponentScaleY(compID);
-      distortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID), pcYuvRec->getStride(compID), pcYuvOrg->getAddr(compID),
+      Distortion tmp = m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID), pcYuvRec->getStride(compID), pcYuvOrg->getAddr(compID),
                                                pcYuvOrg->getStride(compID), cuWidthPixels >> csx, cuHeightPixels >> csy, compID);
+      distortion += tmp;
+#if CUSTOM_RC
+      if (encTopStat.m_isTrial == 1)
+      {
+          if(comp==0)
+              pcCU->getTotalDistortionY() = tmp;
+          else if(comp==1)// CbCr
+              pcCU->getTotalDistortionUV() = tmp;
+          else
+              pcCU->getTotalDistortionUV() += tmp;
+      }
+#endif
     }
 
     m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[pcCU->getDepth(0)][CI_CURR_BEST]);
@@ -4720,7 +4777,19 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   for(Int comp=0; comp<numValidComponents; comp++)
   {
     const ComponentID compID=ComponentID(comp);
-    finalDistortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID);
+    Distortion tmp = m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID);
+    finalDistortion += tmp;
+#if CUSTOM_RC
+    if (encTopStat.m_isTrial == 1)
+    {
+        if (comp == 0)
+            pcCU->getTotalDistortionY() = tmp;
+        else if (comp == 1)// CbCr
+            pcCU->getTotalDistortionUV() = tmp;
+        else
+            pcCU->getTotalDistortionUV() += tmp;
+    }
+#endif
   }
 
   pcCU->getTotalBits()       = finalBits;
@@ -4755,8 +4824,9 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 #endif
 
   Bool bCheckFull;
+  int is_P = MOL_TU8 ? pcCU->getSlice()->getSliceType() != I_SLICE : 0;
 
-  if ( SplitFlag && uiDepth == pcCU->getDepth(uiAbsPartIdx) && ( uiLog2TrSize >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) ) )
+  if ( SplitFlag && uiDepth == pcCU->getDepth(uiAbsPartIdx) && ( uiLog2TrSize > (pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx)+ is_P)) )
   {
     bCheckFull = false;
   }
@@ -4765,9 +4835,12 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     bCheckFull =  ( uiLog2TrSize <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() );
   }
 
-  const Bool bCheckSplit  = ( uiLog2TrSize >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );
+  const Bool bCheckSplit  = ( uiLog2TrSize > (pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx)+ is_P));
 
   assert( bCheckFull || bCheckSplit );
+
+  if (uiLog2TrSize <= 3)
+      SplitFlag = SplitFlag;
 
   // code full block
   Double     dSingleCost = MAX_DOUBLE;
@@ -5155,7 +5228,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
     m_pcEntropyCoder->resetBits();
 
-    if( uiLog2TrSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) )
+    if( uiLog2TrSize > (pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx)+is_P) )
     {
       m_pcEntropyCoder->encodeTransformSubdivFlag( 0, 5 - uiLog2TrSize );
     }

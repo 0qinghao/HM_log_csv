@@ -58,6 +58,11 @@ class TAppDecCfg
 protected:
   std::string   m_bitstreamFileName;                    ///< input bitstream file name
   std::string   m_reconFileName;                        ///< output reconstruction file name
+  std::string   m_SourceFileName;                       ///< source YUV file name
+  Int           m_decFrameLimit;                        ///< decode only specified frames
+  Int           m_targetRate;                           ///< target rate of CBR
+  Int           m_GOPnum;                               ///< GOP number of CBR
+  Int           m_CPBSize;                              ///< CPB Size
   Int           m_iSkipFrame;                           ///< counter for frames prior to the random access point to skip
   Int           m_outputBitDepth[MAX_NUM_CHANNEL_TYPE]; ///< bit depth used for writing output
   InputColourSpaceConversion m_outputColourSpaceConvert;
@@ -81,6 +86,11 @@ public:
   TAppDecCfg()
   : m_bitstreamFileName()
   , m_reconFileName()
+  , m_SourceFileName()
+  , m_decFrameLimit(MAX_INT)
+  , m_targetRate(0)
+  , m_GOPnum(25)
+  , m_CPBSize(0)
   , m_iSkipFrame(0)
   // m_outputBitDepth array initialised below
   , m_outputColourSpaceConvert(IPCOLOURSPACE_UNCHANGED)

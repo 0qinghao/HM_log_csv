@@ -43,6 +43,15 @@
 #include "TLibCommon/ContextModel.h"
 #endif
 
+EncTopStat encTopStat;
+EncTopCRC encTopCRC;
+#if CHK_RDO_HAD
+int g_RDOTotalNum;
+int g_HADEqRDONum;
+double g_RatioSum;
+FILE *fp_RDOHAD;
+#endif
+
 //! \ingroup TLibEncoder
 //! \{
 
@@ -991,6 +1000,9 @@ Void TEncTop::xInitPPS(TComPPS &pps, const TComSPS &sps)
       }
     }
   }
+#if CUSTOM_RC
+  //bChromaDeltaQPEnabled = 1;
+#endif
   pps.setSliceChromaQpFlag(bChromaDeltaQPEnabled);
 
   pps.setEntropyCodingSyncEnabledFlag( m_entropyCodingSyncEnabledFlag );

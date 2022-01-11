@@ -35,6 +35,7 @@
     \brief    entropy encoder class
 */
 
+#include "TEncTop.h"
 #include "TEncEntropy.h"
 #include "TLibCommon/CommonDef.h"
 #include "TLibCommon/TComSampleAdaptiveOffset.h"

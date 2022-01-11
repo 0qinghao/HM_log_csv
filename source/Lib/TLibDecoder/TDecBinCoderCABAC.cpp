@@ -37,6 +37,7 @@
 
 #include "TDecBinCoderCABAC.h"
 #include "TLibCommon/Debug.h"
+#include "TDecTop.h"
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #include "TLibCommon/TComCodingStatistics.h"
 #endif
@@ -132,6 +133,9 @@ Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
       m_uiRange = scaledRange >> 6;
       m_uiValue += m_uiValue;
 
+//#if CTU_STAT_EN
+      decTopStat.m_BitCnts++;
+//#endif
       if ( ++m_bitsNeeded == 0 )
       {
         m_bitsNeeded = -8;
@@ -152,6 +156,9 @@ Void TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
     rcCtxModel.updateLPS();
 
     m_bitsNeeded += numBits;
+//#if CTU_STAT_EN
+    decTopStat.m_BitCnts+=numBits;
+//#endif
 
     if ( m_bitsNeeded >= 0 )
     {
@@ -214,6 +221,9 @@ Void TDecBinCABAC::decodeBinEP( UInt& ruiBin )
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   TComCodingStatistics::IncrementStatisticEP(whichStat, 1, Int(ruiBin));
 #endif
+//#if CTU_STAT_EN
+  decTopStat.m_BitCnts++;
+//#endif
 }
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
@@ -236,6 +246,9 @@ Void TDecBinCABAC::decodeBinsEP( UInt& ruiBin, Int numBins )
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   Int origNumBins=numBins;
 #endif
+//#if CTU_STAT_EN
+  decTopStat.m_BitCnts+=numBins;
+//#endif
   while ( numBins > 8 )
   {
     m_uiValue = ( m_uiValue << 8 ) + ( m_pcTComBitstream->readByte() << ( 8 + m_bitsNeeded ) );
@@ -332,6 +345,9 @@ Void TDecBinCABAC::decodeAlignedBinsEP( UInt& ruiBins, Int numBins )
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   TComCodingStatistics::IncrementStatisticEP(whichStat, numBins, Int(ruiBins));
 #endif
+//#if CTU_STAT_EN
+  decTopStat.m_BitCnts+=numBins;
+//#endif
 }
 
 Void
@@ -346,6 +362,9 @@ TDecBinCABAC::decodeBinTrm( UInt& ruiBin )
     TComCodingStatistics::UpdateCABACStat(STATS__CABAC_TRM_BITS, m_uiRange+2, 2, ruiBin);
     TComCodingStatistics::IncrementStatisticEP(STATS__BYTE_ALIGNMENT_BITS, -m_bitsNeeded, 0);
 #endif
+//#if CTU_STAT_EN
+    decTopStat.m_BitCnts-=m_bitsNeeded;
+//#endif
   }
   else
   {
@@ -358,6 +377,9 @@ TDecBinCABAC::decodeBinTrm( UInt& ruiBin )
       m_uiRange = scaledRange >> 6;
       m_uiValue += m_uiValue;
 
+//#if CTU_STAT_EN
+      decTopStat.m_BitCnts++;
+//#endif
       if ( ++m_bitsNeeded == 0 )
       {
         m_bitsNeeded = -8;
@@ -379,5 +401,8 @@ Void  TDecBinCABAC::xReadPCMCode(UInt uiLength, UInt& ruiCode)
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   TComCodingStatistics::IncrementStatisticEP(STATS__CABAC_PCM_CODE_BITS, uiLength, ruiCode);
 #endif
+//#if CTU_STAT_EN
+  decTopStat.m_BitCnts+=uiLength;
+//#endif
 }
 //! \}

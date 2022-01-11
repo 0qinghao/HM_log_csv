@@ -48,6 +48,8 @@
 #include "TLibCommon/TComCodingStatistics.h"
 #endif
 
+DecTopStat decTopStat;
+
 //! \ingroup TAppDecoder
 //! \{
 
@@ -69,6 +71,7 @@ Void TAppDecTop::destroy()
 {
   m_bitstreamFileName.clear();
   m_reconFileName.clear();
+  m_SourceFileName.clear();
 }
 
 // ====================================================================================================================
@@ -127,7 +130,29 @@ Void TAppDecTop::decode()
   Bool openedReconFile = false; // reconstruction file not yet opened. (must be performed after SPS is seen)
   Bool loopFiltered = false;
 
-  while (!!bitstreamFile)
+  decTopStat.m_decFrameNum = 0;
+#if RC_STAT_EN
+  decTopStat.m_isCTUInit = 0;
+  decTopStat.m_targetRate = m_targetRate;
+  decTopStat.m_GOPnum = m_GOPnum;
+  decTopStat.m_targetCpbSize = m_CPBSize;
+  decTopStat.m_frameBits = 0;
+  decTopStat.m_SAOBits = 0;
+  decTopStat.m_HdrBits = 0;
+  decTopStat.m_DBits = 0;
+  decTopStat.m_IBits = 0;
+  decTopStat.m_PBits = 0;
+  decTopStat.m_source_fp = fopen(m_SourceFileName.c_str(), "rb");
+  decTopStat.streamName = m_bitstreamFileName;
+  decTopStat.m_maxQP = 0;
+  decTopStat.m_minQP = 0xff;
+  Dec_Stat_Init();
+#endif
+#if SMD5
+  MD5Init(&decTopStat.md5ctx);
+#endif
+
+  while (!!bitstreamFile && (decTopStat.m_decFrameNum < m_decFrameLimit))
   {
     /* location serves to work around a design fault in the decoder, whereby
      * the process of reading a new slice that is the first slice of a new frame
@@ -181,6 +206,17 @@ Void TAppDecTop::decode()
           bytestream.reset();
 #endif
         }
+
+        /*if (bNewPicture || !bitstreamFile)  // last frame got no bNewPicture
+        {
+#if RC_STAT_EN
+            Dec_Calc_PSNR_SSIM(m_cTDecTop.getPcPic(), &m_decFrameLimit);
+#endif
+#if CTU_STAT_EN
+            Print_CTU_Stat(m_cTDecTop.getPcPic());
+#endif
+            decTopStat.m_decFrameNum++;
+        }*/
       }
     }
 
@@ -219,6 +255,18 @@ Void TAppDecTop::decode()
         m_cTVideoIOYuvReconFile.open( m_reconFileName, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
         openedReconFile = true;
       }
+
+      if (bNewPicture || !bitstreamFile)  // last frame got no bNewPicture
+      {
+#if RC_STAT_EN
+          Dec_Calc_PSNR_SSIM(m_cTDecTop.getPcPic(), &m_decFrameLimit);
+#endif
+#if CTU_STAT_EN
+          Print_CTU_Stat(m_cTDecTop.getPcPic());
+#endif
+          decTopStat.m_decFrameNum++;
+      }
+
       // write reconstruction to file
       if( bNewPicture )
       {
@@ -251,7 +299,28 @@ Void TAppDecTop::decode()
     }
   }
 
+#if RC_STAT_EN
+  Print_RC_Stat();
+  Dec_Stat_DeInit();
+#endif
+#if CTU_STAT_EN
+  Dec_CTUStat_DeInit();
+#endif
+
   xFlushOutput( pcListPic );
+
+#if SMD5
+  {
+      FILE* fp_md5 = fopen("dec_yuv.md5", "w");
+      uint8_t i, signature[16];
+      MD5Final(signature, &decTopStat.md5ctx);
+      for (i = 0; i < 16; i++)
+          fprintf(fp_md5, "%02X", signature[i]);
+      fprintf(fp_md5, "\n");
+      fclose(fp_md5);
+  }
+#endif
+
   // delete buffers
   m_cTDecTop.deletePicBuffer();
 
@@ -398,12 +467,14 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
 
           if (display)
           {
+//#if YUV_OUT
             m_cTVideoIOYuvReconFile.write( pcPicTop->getPicYuvRec(), pcPicBottom->getPicYuvRec(),
                                            m_outputColourSpaceConvert,
                                            conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                                            conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
                                            conf.getWindowTopOffset() + defDisp.getWindowTopOffset(),
                                            conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset(), NUM_CHROMA_FORMAT, isTff );
+//#endif
           }
         }
 
@@ -452,7 +523,7 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
         {
           const Window &conf    = pcPic->getConformanceWindow();
           const Window  defDisp = m_respectDefDispWindow ? pcPic->getDefDisplayWindow() : Window();
-
+//#if YUV_OUT
           m_cTVideoIOYuvReconFile.write( pcPic->getPicYuvRec(),
                                          m_outputColourSpaceConvert,
                                          conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
@@ -460,6 +531,7 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
                                          conf.getWindowTopOffset() + defDisp.getWindowTopOffset(),
                                          conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset(),
                                          NUM_CHROMA_FORMAT, m_bClipOutputVideoToRec709Range  );
+//#endif
         }
 
         if (!m_colourRemapSEIFileName.empty())
@@ -518,12 +590,14 @@ Void TAppDecTop::xFlushOutput( TComList<TComPic*>* pcListPic )
           const Window &conf = pcPicTop->getConformanceWindow();
           const Window  defDisp = m_respectDefDispWindow ? pcPicTop->getDefDisplayWindow() : Window();
           const Bool isTff = pcPicTop->isTopField();
+//#if YUV_OUT
           m_cTVideoIOYuvReconFile.write( pcPicTop->getPicYuvRec(), pcPicBottom->getPicYuvRec(),
                                          m_outputColourSpaceConvert,
                                          conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                                          conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
                                          conf.getWindowTopOffset() + defDisp.getWindowTopOffset(),
                                          conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset(), NUM_CHROMA_FORMAT, isTff );
+//#endif
         }
 
         // update POC of display order
@@ -575,7 +649,7 @@ Void TAppDecTop::xFlushOutput( TComList<TComPic*>* pcListPic )
         {
           const Window &conf    = pcPic->getConformanceWindow();
           const Window  defDisp = m_respectDefDispWindow ? pcPic->getDefDisplayWindow() : Window();
-
+//#if YUV_OUT
           m_cTVideoIOYuvReconFile.write( pcPic->getPicYuvRec(),
                                          m_outputColourSpaceConvert,
                                          conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
@@ -583,6 +657,7 @@ Void TAppDecTop::xFlushOutput( TComList<TComPic*>* pcListPic )
                                          conf.getWindowTopOffset() + defDisp.getWindowTopOffset(),
                                          conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset(),
                                          NUM_CHROMA_FORMAT, m_bClipOutputVideoToRec709Range );
+//#endif
         }
 
         if (!m_colourRemapSEIFileName.empty())
