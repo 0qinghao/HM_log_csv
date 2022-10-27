@@ -325,6 +325,21 @@ Void TDecTop::xActivateParameterSets()
       assert (0);
     }
 
+#if RC_STAT_EN
+    UInt LevelIdc = sps->getPTL()->getGeneralPTL()->getLevelIdc();
+    UInt LevelIdx = (LevelIdc / 10) + (UInt)((LevelIdc % 10) / 3);
+    UInt LevelTier = sps->getPTL()->getGeneralPTL()->getTierFlag();
+    UInt g_uiMaxCpbSize[2][21] =
+    {
+        //         LEVEL1,        LEVEL2,LEVEL2_1,     LEVEL3, LEVEL3_1,      LEVEL4, LEVEL4_1,       LEVEL5,  LEVEL5_1,  LEVEL5_2,    LEVEL6,  LEVEL6_1,  LEVEL6_2
+        { 0, 0, 0, 350000, 0, 0, 1500000, 3000000, 0, 6000000, 10000000, 0, 12000000, 20000000, 0,  25000000,  40000000,  60000000,  60000000, 120000000, 240000000 },
+        { 0, 0, 0,      0, 0, 0,       0,       0, 0,       0,        0, 0, 30000000, 50000000, 0, 100000000, 160000000, 240000000, 240000000, 480000000, 800000000 }
+    };
+    decTopStat.m_frameWidth = sps->getPicWidthInLumaSamples();
+    decTopStat.m_frameHeight = sps->getPicHeightInLumaSamples();
+    decTopStat.m_MaxCpbSize = g_uiMaxCpbSize[LevelTier][LevelIdx];
+#endif
+
     xParsePrefixSEImessages();
 #if MCTS_ENC_CHECK
     xAnalysePrefixSEImessages();
@@ -650,12 +665,18 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   }
 
   // actual decoding starts here
+#if RC_STAT_EN
+  // skip VPS/SPS/PPS size
+  if (m_bFirstSliceInPicture)
+      decTopStat.m_frameBits = decTopStat.m_NALUFullByte*8;
+  else
+      decTopStat.m_frameBits += decTopStat.m_NALUFullByte*8;
+#endif
 #if MCTS_EXTRACTION
   xActivateParameterSets(bSkipCabacAndReconstruction);
 #else
   xActivateParameterSets();
 #endif
-
 
   TComSlice* pcSlice = m_pcPic->getPicSym()->getSlice(m_uiSliceIdx);
 
@@ -828,6 +849,9 @@ Bool TDecTop::decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay)
 
     case NAL_UNIT_PPS:
       xDecodePPS(nalu.getBitstream().getFifo());
+//#if CTU_STAT_EN
+      Dec_CTUStat_Init(m_parameterSetManager.getFirstSPS(), m_parameterSetManager.getFirstPPS());
+//#endif
       return false;
 
     case NAL_UNIT_PREFIX_SEI:

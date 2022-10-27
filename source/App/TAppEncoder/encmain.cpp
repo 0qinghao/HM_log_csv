@@ -51,6 +51,65 @@
 
 int main(int argc, char* argv[])
 {
+    double lambda[52];
+    double mul[52];
+    for (int QP = 0; QP <= 51; QP++)
+    {
+        // lambda = alpha * pow(2, (QP-12)/3), QP = 4.2005*log(lambda)+13.7122
+        lambda[QP] = 0.57 * pow(2, (QP-12)/3);
+
+        //lambda[QP] = int(lambda[QP] * 1024);
+    }
+    mul[51] = 65535 / lambda[51];
+    mul[50] = 54662 / lambda[50];
+    /*double a = log(2)*4.2005/3;
+    double b = 13.7122 - 12*a;
+    double c = 1-a;
+    double alpha[51];
+    double beta[51];
+    double tmp[51];
+    for (int QP = 0; QP <= 51; QP++)
+    {
+        // lambda = alpha * pow(2, (QP-12)/3), QP = 4.2005*log(lambda)+13.7122
+        alpha[QP] = pow(2.71828, (c * QP - b) / 4.2005);
+
+        double a0 = 0.61150518227251605;
+        double b0 = 1.0070425145788775;
+        double c0 = 1.0303737737998839;
+        // lambda = a0 * pow(2, (c0*QP-12)/3)
+        beta[QP] = a0 * pow(b0, QP);
+        tmp[QP] = alpha[QP] / beta[QP];
+    }*/
+    /*{
+        Double ratio = pow((51984 * 1.1) / 1516368, -0.5);
+        Double CRCPicIAlpha = 11.249050 * ratio;
+        int bitsFromP = int(2088960 * (pow(75.707094 / CRCPicIAlpha, 1 / -0.5)));
+
+        Double ratio2 = pow((51984 * 1.2) / 1516368, -1.87);
+        Double CRCPicIAlpha2 = 0.079863 * ratio2;
+        int bitsFromP2 = int(2088960 * (pow(75.707094 / CRCPicIAlpha2, 1 / -1.87)));
+
+        Double diffLambda0 = pow((Double)51984 / 57777, 1.0 * -0.5);
+        Double diffLambda1 = pow((Double)51984 / 57777, 1.2 * -0.5);
+        Double diffLambda2 = pow((Double)51984 / 57777, 1.5 * -0.5);
+
+        Double old_beta = -0.5;
+        Double old_alpha = 17.721224;
+        int PicTargetBits = 57777;
+        int PicActualBits = 5672;
+        Double t1 = log((Double)PicTargetBits);
+        Double t2 = log((Double)PicActualBits);
+
+        Double bpp = 60000 / (Double)(1920*1088);
+        Double Lambda = old_alpha * pow(bpp, old_beta);
+        Double Lambda2 = old_alpha / bpp;
+        int estQP = Int(4.2005 * log(Lambda) + 13.7122 + 0.5);
+        int estQP2 = Int(4.2005 * log(Lambda2) + 13.7122 + 0.5);
+
+        Double diffLambda = (old_beta) * (log((Double)PicTargetBits) - log((Double)PicActualBits));
+        Double new_alpha = old_alpha * exp(diffLambda);
+        new_alpha = new_alpha;
+    }*/
   TAppEncTop  cTAppEncTop;
 
   // print information

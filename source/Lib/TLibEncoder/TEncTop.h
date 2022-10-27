@@ -131,6 +131,8 @@ public:
   Void      init            (Bool isFieldCoding);
   Void      deletePicBuffer ();
 
+  Void      CRC_Seq_Init();
+
   // -------------------------------------------------------------------------------------------------------------------
   // member access functions
   // -------------------------------------------------------------------------------------------------------------------
@@ -153,6 +155,10 @@ public:
   TEncSbac***             getRDSbacCoder        () { return  m_pppcRDSbacCoder;       }
   TEncSbac*               getRDGoOnSbacCoder    () { return  &m_cRDGoOnSbacCoder;     }
   TEncRateCtrl*           getRateCtrl           () { return &m_cRateCtrl;             }
+
+  Int*					  getPicRcvd			() { return  &m_iNumPicRcvd; }	// Derek
+  UInt*					  getAllPicCoded		() { return  &m_uiNumAllPicCoded; }
+
   Void selectReferencePictureSet(TComSlice* slice, Int POCCurr, Int GOPid );
   Int getReferencePictureSetIdxForSOP(Int POCCurr, Int GOPid );
 
@@ -202,6 +208,290 @@ public:
 
 };
 
+
+#define CUSTOM_RC       1
+#define QUICK_RC        0   // ADAPTIVE_QP_SELECTION=0 TransformSkipFast=1 FastDeltaQP=1 ECU=1 CFM=1
+#define CTU_INFO_CSV    1
+#define CTU_WEIGHT      1   // 1=high-pass, 2=luma/motion, 3=variance
+
+typedef struct enc_frame_stat
+{
+    int frame_POC;
+    int frame_SliceQP;
+    int frame_AvgQP;
+    int frame_maxQP;
+    int frame_minQP;
+    int slice_type;
+
+    // pre-status
+    //int estframeBits;
+    //float m_nonSkipBits8x8;
+    int m_avgGRD;
+    int m_avgHAD;
+    int m_avgSAD;
+    int m_avgDHAD;
+    //int m_avgDVAR;
+    int m_avgDGR;
+    UInt64 m_TotalSAD;
+
+    // post-status
+    int frameBits;   // without 0x02 0x03 and CABAC_ZERO_WORD, that is, only RBSP size
+    int frameBitsHeader;
+    int frameBitsData;
+    int realSkip8x8Num;
+    int m_TotalNonZeroNum_I;    // Only Y
+    int m_TotalNonZeroNum_P;
+    int m_TotalDistortion[3];
+    //int m_MotionCnts[3];
+    //int m_MotionBits[3];
+    //int m_MotionSAD[3];
+    //int m_MotionDGR[3];
+    float m_encPSNR[4];
+    float m_encSSIM[4];
+    float m_encMSE[4];
+    //int m_encMAD[4];
+
+    int cpb_overflow;
+    int cpb_state;
+    int cpb_vbuf;
+    int est_vbuf;
+    int gop_left_bits;
+    int target_bits;
+    double pic_lambda;
+    double pic_HAD_alpha;
+    double pic_HAD_beta;
+
+    double blk_weight_c[2];
+}EncFrameStat;
+
+typedef struct enc_ctu_text
+{
+    int m_TotalBits;
+    int m_ctuHeaderBits;    // includes YUV, in raster scan
+    int m_ctuDataBits;
+    
+    //int m_QP;
+    int m_avgQP;
+    int m_minQP;
+    int m_maxQP;
+    int m_CtuType[3]; // 0=skip, 1=inter, 2=intra
+    float m_motion;   // 0=still, 1=small motion, 2=large motion
+    int m_RdCost;
+    int m_Dist[3];  // 0-Y, 1-UV, 2-YUV
+    float m_PSNR[3];  // 0-Y, 1-U, 2-V
+    int m_NonZeroCoeffNum;
+    //int m_estSkip;
+
+    int m_ctuGRD;  // intra-frame
+    int m_ctuHAD;  // intra-frame
+    int m_ctuSAD;  // inter-frame
+    int m_ctuDHAD;  // inter-frame
+    int m_ctuDVAR; // inter-frame
+    int m_ctuDGR;  // inter-frame
+
+    int m_ctuAvgLuma;
+    int m_ctuAvgVAR;
+    double motion_weight;
+    double luma_weight;
+    double lumo_weight; // V1
+    double hipa_weight; // V2
+    double var_weight;  // V3
+    double m_CtuLambda;
+
+    //int m_TargetBits;
+    //int m_CPMode;
+    int m_CtuLambdaIdx;
+    int m_CtuLeftBits;
+}EncCtuText;
+
+typedef struct enc_top_stat
+{
+    vector<EncFrameStat>    FrameStat;
+    int m_isTrial;
+    int m_encFrameNum;
+    TComPic* curPic;
+    TComPic* refPic;
+
+    EncCtuText *CtuText[2]; // cur and ref
+
+    int m_maxQP;
+    int m_minQP;
+    int m_HeaderBits;  // temp variable
+    int m_DataBits;    // temp variable
+    int m_BitCnts;     // temp variable
+    int m_CoeffNum_I;    // temp variable
+    int m_CoeffNum_P;    // temp variable
+
+    double HAD_ALPHA[52];
+    double HAD_BETA[52];
+}EncTopStat;
+extern EncTopStat encTopStat;
+
+typedef struct enc_top_crc
+{
+    // Seq
+    int encFrameNum;
+    int CRCWidth;
+    int CRCHeight;
+    int CRCPicPixels;
+    int CRCCtuSize;
+
+    int CRCEn;
+    int CRCCtuEn;
+    int CRCCpbEn;
+    int CRCTargetBit;
+    int CRCTargetAvgBit;
+    int CRCInitQP;
+
+    int CRCFrameRate;
+    int CRCTotalFrames;
+    int CRCFramesLeft;
+    int CRCPrevPQP;
+    double CRCHadScale;
+
+    int CRCMaxCpbSize;
+    int CRCCpbSize;
+    int CRCCpbState;
+    int CRCBufferingRate;
+
+    // lambda table
+    int CRCLambdaIdx;
+    int CRCLambdaIdxAccP;
+    int CRCLambdaIdxAccN;
+    double CRCLambdaTBL[52*4];
+    double CRCPicConstI;
+    double CRCPicConstP;
+    double CRCPicConstPAvg;
+    double CRCPicConstPSum;
+    double CRCPicConstPSlot[32];    // CONSTP_WIN
+    int CRCPicConstPBitsAvg;
+    int CRCPicConstPBitsSum;
+    int CRCPicConstPBitsSlot[32];   // CONSTP_WIN
+    int CRCPicConstPPrvIdx;
+    int CRCPicConstPCnt;
+
+    // Gop
+    int CRCGopSize;
+    int CRCGopLeftBits;
+    int CRCGopDeltaBits;
+    int CRCGopTargetBits;
+    int CRCGopTargetVBuf;
+    int CRCGopAvgVBuf;
+
+    // Pic
+    int CRCPicIdealBits;
+    int CRCPicIdealBits2;
+    int CRCPicTargetBits;
+
+    int CRCPicAvgIBits;
+    int CRCPicAvgIBitsSum;
+    int CRCPicAvgIBitsSlot[4];   // SMOOTH_I_WIN
+    int CRCPicAvgIPrvIdx;
+    int CRCPicAvgICnt;
+
+    int CRCPicAvgLeftBits;
+    int CRCPicAvgLeftBitsSum;
+    int CRCPicAvgLeftBitsSlot[4];   // LEFTBITS_WIN
+    int CRCPicAvgLeftBitsPrvIdx;
+    int CRCPicAvgLeftBitsCnt;
+
+    int CRCPicQP;
+    int CRCPicCompMode;
+    double CRCPicLambda;
+
+    // HAD
+    int CRCPicEstHADIBits;
+    int CRCPicEstHADIQP;
+
+    // SAD
+    int CRCPicSAD;
+    int CRCPicPrvSAD;
+    //int CRCPicPrvLambdaIdx;
+    int CRCPicPrvLambdaOffset;
+    int CRCPicSADLambdaShift;
+
+    int CRCPicAvgSAD;
+    int CRCPicAvgSADSum;
+    int CRCPicAvgSADSlot[16];   // SAD_WIN
+
+    int CRCPicAvgLambdaIdx;
+    int CRCPicAvgLambdaIdxSum;
+    int CRCPicAvgLambdaIdxSlot[16];   // SAD_WIN
+
+    double CRCPicAvgSADAlpha;
+    double CRCPicAvgSADAlphaSum;
+    double CRCPicAvgSADAlphaSlot[16];   // SAD_WIN
+
+    double CRCPicAvgSADBeta;
+    double CRCPicAvgSADBetaSum;
+    double CRCPicAvgSADBetaSlot[16];   // SAD_WIN
+
+    int CRCPicAvgSADConst;
+    int CRCPicAvgSADConstSum;
+    int CRCPicAvgSADConstSlot[16];   // SAD_WIN
+
+    double CRCPicSADAlpha;
+    double CRCPicSADBeta;
+    int CRCPicSADConst;
+
+    int CRCPicAvgSADPrvIdx;
+    int CRCPicAvgSADCnt;
+
+    // CTU
+    //int CRCCtuTargetBits;
+    //int CRCCtuActualBits;
+    int CRCCtuAccumBits;
+    //int CRCCtuCompMode;
+    int CRCCtuLambdaIdx;
+    int CRCCtuQP;
+    int CRCQPC_delta[2];
+    double CRCCtuLambda;
+    double CRCCtuLambdaScale;
+    int CRCCtuAvgLambdaIdx;
+    //int CRCCtuAvgQP;
+    int CRCCtuValidCnt;
+    int CRCCtuLambdaIdxOffset;
+
+    // VBR
+    int CRCPicVBRMinBits;
+    int CRCPicVBRMaxBits;
+    int CRCPicVBRMinQP;
+    int CRCPicVBRMaxQP;    
+    int CRCPicPrvIBits;
+    int CRCPicVBRHits;
+    int CRCPicEstActBits;
+
+    //int CRCPicVBRAvgPBits;
+    //int CRCPicVBRPBitsSum;
+    //int CRCPicVBRPBitsSlot[16];   // VBR_P_WIN
+    //int CRCPicVBRPrvPIdx;
+    //int CRCPicVBRPCnt;
+    
+}EncTopCRC;
+extern EncTopCRC encTopCRC;
+
+#if CHK_RDO_HAD
+extern int g_RDOTotalNum;
+extern int g_HADEqRDONum;
+extern double g_RatioSum;
+extern FILE *fp_RDOHAD;
+#endif
+
+void Enc_Init_Text(int width, int height, int ctu_size);
+void Enc_DeInit_Text();
+void Analyze_Pictures(TComPic* currPic, int intra_period);
+void Estimate_Intra_Bits();
+int Estimate_Intra_QP(int target_bits);
+void update_parameters(int actual_bits);
+void Print_CTU_Text(TComPic* pcPic, int intra_period);
+void Print_Frame_Stat();
+
+int CRC_Init_GOP();
+void CRC_Init_PIC(int isISlice);
+void CRC_Update_Params(int isISlice);
+
+int find_lambda_idx(int Idx, const double estLambda_cur);
+void CRC_Estimate_CTU_Lambda(TComPic* pcPic, int totalCtuInSlice, int CtuLeftNum);
 //! \}
 
 #endif // __TENCTOP__

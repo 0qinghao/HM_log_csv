@@ -148,6 +148,8 @@ private:
   Bool          m_bDecSubCu;                            ///< indicates decoder-mode
   Double        m_dTotalCost;                           ///< sum of partition RD costs
   Distortion    m_uiTotalDistortion;                    ///< sum of partition distortion
+  Distortion    m_uiTotalDistortionY;                    ///< sum of partition distortion
+  Distortion    m_uiTotalDistortionUV;                    ///< sum of partition distortion
   UInt          m_uiTotalBits;                          ///< sum of partition bits
   UInt          m_uiTotalBins;                          ///< sum of partition bins
   SChar         m_codedQP;
@@ -478,6 +480,8 @@ public:
 
   Double&       getTotalCost                  ( )                                                          { return m_dTotalCost;        }
   Distortion&   getTotalDistortion            ( )                                                          { return m_uiTotalDistortion; }
+  Distortion&   getTotalDistortionY           ( )                                                          { return m_uiTotalDistortionY; }
+  Distortion&   getTotalDistortionUV          ( )                                                          { return m_uiTotalDistortionUV; }
   UInt&         getTotalBits                  ( )                                                          { return m_uiTotalBits;       }
   UInt&         getTotalNumPart               ( )                                                          { return m_uiNumPartition;    }
 

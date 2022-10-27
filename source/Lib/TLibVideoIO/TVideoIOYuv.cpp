@@ -45,6 +45,7 @@
 
 #include "TLibCommon/TComRom.h"
 #include "TVideoIOYuv.h"
+#include "TLibDecoder/TDecTop.h"
 
 using namespace std;
 
@@ -446,11 +447,16 @@ static Bool writePlane(ostream& fd, Pel* src, Bool is16bit,
           }
         }
 
+#if YUV_OUT
         fd.write(reinterpret_cast<const TChar*>(buf), stride_file);
         if (fd.eof() || fd.fail() )
         {
           return false;
         }
+#endif
+#if SMD5
+        MD5Update(&decTopStat.md5ctx, reinterpret_cast<unsigned char*>(buf), stride_file);
+#endif
       }
     }
   }
@@ -504,11 +510,16 @@ static Bool writePlane(ostream& fd, Pel* src, Bool is16bit,
           }
         }
 
+#if YUV_OUT
         fd.write(reinterpret_cast<const TChar*>(buf), stride_file);
         if (fd.eof() || fd.fail() )
         {
           return false;
         }
+#endif
+#if SMD5
+        MD5Update(&decTopStat.md5ctx, reinterpret_cast<unsigned char*>(buf), stride_file);
+#endif
       }
 
       if ((y444&mask_y_src)==0)

@@ -38,7 +38,7 @@
 #include <list>
 #include <algorithm>
 #include <functional>
-#include <inttypes.h>
+#include "inttypes.h"
 
 #include "TEncTop.h"
 #include "TEncGOP.h"
@@ -1300,6 +1300,35 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       pcSlice->setSliceType(I_SLICE);
     }
+
+#if CUSTOM_RC
+    Analyze_Pictures(pcPic, m_pcCfg->getIntraPeriod());
+    if (encTopCRC.CRCEn && encTopCRC.CRCCtuEn)
+    {
+        Int cbQP = encTopCRC.CRCQPC_delta[0];
+        Int crQP = encTopCRC.CRCQPC_delta[1];
+        if ((cbQP + crQP) != 0)
+        {
+            (const_cast<TComPPS*>(pcSlice->getPPS()))->setSliceChromaQpFlag(true);
+            if (pcSlice->getPPS()->getSliceChromaQpFlag())
+            {
+                cbQP = Clip3(-12, 12, cbQP + pcSlice->getPPS()->getQpOffset(COMPONENT_Cb)) - pcSlice->getPPS()->getQpOffset(COMPONENT_Cb);
+                crQP = Clip3(-12, 12, crQP + pcSlice->getPPS()->getQpOffset(COMPONENT_Cr)) - pcSlice->getPPS()->getQpOffset(COMPONENT_Cr);
+                pcSlice->setSliceChromaQpDelta(COMPONENT_Cb, Clip3(-12, 12, cbQP));
+                assert(pcSlice->getSliceChromaQpDelta(COMPONENT_Cb) + pcSlice->getPPS()->getQpOffset(COMPONENT_Cb) <= 12 && pcSlice->getSliceChromaQpDelta(COMPONENT_Cb) + pcSlice->getPPS()->getQpOffset(COMPONENT_Cb) >= -12);
+                pcSlice->setSliceChromaQpDelta(COMPONENT_Cr, Clip3(-12, 12, crQP));
+                assert(pcSlice->getSliceChromaQpDelta(COMPONENT_Cr) + pcSlice->getPPS()->getQpOffset(COMPONENT_Cr) <= 12 && pcSlice->getSliceChromaQpDelta(COMPONENT_Cr) + pcSlice->getPPS()->getQpOffset(COMPONENT_Cr) >= -12);
+            }
+        }
+        else
+        {
+            (const_cast<TComPPS*>(pcSlice->getPPS()))->setSliceChromaQpFlag(false);
+            pcSlice->setSliceChromaQpDelta(COMPONENT_Cb, 0);
+            pcSlice->setSliceChromaQpDelta(COMPONENT_Cr, 0);
+        }
+    }
+
+#endif
     
     // Set the nal unit type
     pcSlice->setNalUnitType(getNalUnitType(pocCurr, m_iLastIDR, isField));
@@ -1565,7 +1594,6 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->setMvdL1ZeroFlag(false);
     }
 
-
     Double lambda            = 0.0;
     Int actualHeadBits       = 0;
     Int actualTotalBits      = 0;
@@ -1664,6 +1692,16 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_pcSliceEncoder->resetQP( pcPic, sliceQP, lambda );
     }
 
+#if CUSTOM_RC
+    if (encTopCRC.CRCEn)
+    {
+        int isISlice = pcSlice->getSliceType() == I_SLICE;
+        CRC_Init_PIC(isISlice);
+        
+        m_pcSliceEncoder->resetQP(pcPic, encTopCRC.CRCPicQP, encTopCRC.CRCPicLambda);
+    }
+#endif
+
     UInt uiNumSliceSegments = 1;
 
     // Allocate some coders, now the number of tiles are known.
@@ -1680,8 +1718,15 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 
       for(UInt nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
       {
+#if CUSTOM_RC
+        encTopCRC.CRCCtuAccumBits = 0;
+#endif
         m_pcSliceEncoder->precompressSlice( pcPic );
+#if QUICK_RC
+        m_pcSliceEncoder->compressSlice(pcPic, false, m_pcCfg->getDeltaQpRD());
+#else
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
+#endif
 
         const UInt curSliceSegmentEnd = pcSlice->getSliceSegmentCurEndCtuTsAddr();
         if (curSliceSegmentEnd < numberOfCtusInFrame)
@@ -1953,6 +1998,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     Double PSNR_Y;
 
     xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, dEncTime, snr_conversion, outputLogCtrl, &PSNR_Y );
+#if CUSTOM_RC
+    //Print_CTU_Text(pcPic, m_pcCfg->getIntraPeriod());
+    //Estimate_Intra_Bits();
+    //update_parameters(encTopStat.FrameStat[encTopStat.m_encFrameNum].frameBits);
+    //Estimate_Intra_QP(encTopStat.FrameStat[encTopStat.m_encFrameNum].frameBits);
+#endif
     
     // Only produce the Green Metadata SEI message with the last picture.
     if( m_pcCfg->getSEIGreenMetadataInfoSEIEnable() && pcSlice->getPOC() == ( m_pcCfg->getFramesToBeEncoded() - 1 )  )
@@ -1994,6 +2045,18 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       }
     }
 
+#if CUSTOM_RC
+    if (encTopCRC.CRCEn)
+    {
+        int isISlice = pcSlice->getSliceType() == I_SLICE;
+        CRC_Update_Params(isISlice);
+    }
+#endif
+#if CUSTOM_RC
+    Print_CTU_Text(pcPic, m_pcCfg->getIntraPeriod());
+#endif
+    encTopStat.m_encFrameNum++;
+
     xCreatePictureTimingSEI(m_pcCfg->getEfficientFieldIRAPEnabled()?effFieldIRAPMap.GetIRAPGOPid():0, leadingSeiMessages, nestedSeiMessages, duInfoSeiMessages, pcSlice, isField, duData);
     if (m_pcCfg->getScalableNestingSEIEnabled())
     {
@@ -2019,10 +2082,12 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
 #if REDUCED_ENCODER_MEMORY
 
     pcPic->releaseReconstructionIntermediateData();
+#if !CUSTOM_RC 
     if (!isField) // don't release the source data for field-coding because the fields are dealt with in pairs. // TODO: release source data for interlace simulations.
     {
       pcPic->releaseEncoderSourceImageData();
     }
+#endif
 
 #endif
   } // iGOPid-loop
@@ -2278,6 +2343,10 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
 
   //===== calculate PSNR =====
 
+  int ctu_num = pcPic->getNumberOfCtusInFrame();
+  int ctb_size = pcPic->getSlice(0)->getSPS()->getMaxCUWidth();
+  int ctu_width = (pcPic->getSlice(0)->getSPS()->getPicWidthInLumaSamples() + ctb_size - 1) / ctb_size;
+  int frame_sw = encTopStat.m_encFrameNum & 0x1;
 #if JCTVC_Y0037_XPSNR
   if (outputLogCtrl.printXPSNR && pcPicD->getChromaFormat() != CHROMA_400)
   {
@@ -2291,7 +2360,7 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     UInt64 uiSSDtemp[MAX_NUM_COMPONENT];
     UInt   uiShiftWidth[MAX_NUM_COMPONENT], uiShiftHeight[MAX_NUM_COMPONENT];
     Intermediate_Int iDiff;
-    
+
     for(Int chan=0; chan<pcPicD->getNumberValidComponents(); chan++)
     {
       const ComponentID ch=ComponentID(chan);
@@ -2363,6 +2432,13 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   else
 #endif
   {
+    for (int x = 0; x < ctu_num; x++)
+    {
+        encTopStat.CtuText[frame_sw][x].m_PSNR[0] = 0;
+        encTopStat.CtuText[frame_sw][x].m_PSNR[1] = 0;
+        encTopStat.CtuText[frame_sw][x].m_PSNR[2] = 0;
+    }
+
     for(Int chan=0; chan<pcPicD->getNumberValidComponents(); chan++)
     {
       const ComponentID ch=ComponentID(chan);
@@ -2375,6 +2451,7 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
       const Int   iHeight = pcPicD->getHeight(ch) - ((m_pcEncTop->getPad(1) >> (pcPic->isField()?1:0)) >> pcPic->getComponentScaleY(ch));
 
       Int   iSize   = iWidth*iHeight;
+      int   blkY32, blkX32, blk32;
 
       UInt64 uiSSDtemp=0;
       for(Int y = 0; y < iHeight; y++ )
@@ -2383,6 +2460,21 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
         {
           Intermediate_Int iDiff = (Intermediate_Int)( pOrg[x] - pRec[x] );
           uiSSDtemp   += iDiff * iDiff;
+
+          // derek, CTU level PSNR
+          if (chan == 0)
+          {
+              blkY32 = y / ctb_size;
+              blkX32 = x / ctb_size;
+              blk32 = blkY32 * ctu_width + blkX32;
+          }
+          else
+          {
+              blkY32 = y / (ctb_size / 2);
+              blkX32 = x / (ctb_size / 2);
+              blk32 = blkY32 * ((ctu_width + 1) >> 1) + blkX32;
+          }
+          encTopStat.CtuText[frame_sw][blk32].m_PSNR[chan] += iDiff * iDiff;
         }
         pOrg += iOrgStride;
         pRec += iRecStride;
@@ -2391,6 +2483,20 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
       const Double fRefValue = (Double) maxval * maxval * iSize;
       result.psnr[ch]         = ( uiSSDtemp ? 10.0 * log10( fRefValue / (Double)uiSSDtemp ) : 999.99 );
       result.MSEyuvframe[ch]   = (Double)uiSSDtemp/(iSize);
+    }
+
+    const Double fRefValueY = (Double)255 * 255 * ctb_size * ctb_size;
+    const Double fRefValueC = (Double)255 * 255 * ctb_size/2 * ctb_size/2;
+    for (int x = 0; x < ctu_num; x++)
+    {
+        UInt64 val = encTopStat.CtuText[frame_sw][x].m_PSNR[0];
+        encTopStat.CtuText[frame_sw][x].m_PSNR[0] = (val ? 10.0 * log10(fRefValueY / (Double)val) : 999.99);
+
+        val = encTopStat.CtuText[frame_sw][x].m_PSNR[1];
+        encTopStat.CtuText[frame_sw][x].m_PSNR[1] = (val ? 10.0 * log10(fRefValueC / (Double)val) : 999.99);
+
+        val = encTopStat.CtuText[frame_sw][x].m_PSNR[2];
+        encTopStat.CtuText[frame_sw][x].m_PSNR[2] = (val ? 10.0 * log10(fRefValueC / (Double)val) : 999.99);
     }
   }
 #if EXTENSION_360_VIDEO
@@ -2451,6 +2557,49 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   result.bits=(Double)uibits;
   m_gcAnalyzeAll.addResult (result);
 
+#if CUSTOM_RC
+#define YUV_FACTOR  6
+  const int frameno = encTopStat.m_encFrameNum;
+
+  // Calc Frame Avg QP
+  //const int frame_sw = frameno & 0x1;
+  //const int ctu_num = pcPic->getNumberOfCtusInFrame();
+  int QPSum = 0;
+  int QPCnt = 0;
+  encTopStat.FrameStat[frameno].frame_maxQP = 0;
+  encTopStat.FrameStat[frameno].frame_minQP = 0xff;
+  for (int x = 0; x < ctu_num; x++)
+  {
+      int qp_val = encTopStat.CtuText[frame_sw][x].m_avgQP;
+      if (qp_val != 0)
+      {
+          QPCnt++;
+          QPSum += qp_val;
+          encTopStat.FrameStat[frameno].frame_maxQP = max(encTopStat.CtuText[frame_sw][x].m_maxQP, encTopStat.FrameStat[frameno].frame_maxQP);
+          encTopStat.FrameStat[frameno].frame_minQP = min(encTopStat.CtuText[frame_sw][x].m_minQP, encTopStat.FrameStat[frameno].frame_minQP);
+      }
+  }
+  int QPAvg = (QPCnt == 0) ? pcPic->getSlice(0)->getSliceQp() : ((QPSum + (QPCnt >> 1)) / QPCnt);
+
+  encTopStat.FrameStat[frameno].frameBits = uibits;
+  encTopStat.FrameStat[frameno].frame_POC = pcPic->getPOC();
+  encTopStat.FrameStat[frameno].frame_SliceQP = pcPic->getSlice(0)->getSliceQp();
+  encTopStat.FrameStat[frameno].frame_AvgQP = QPAvg;
+  encTopStat.FrameStat[frameno].slice_type = pcPic->getSlice(0)->getSliceType();
+  encTopStat.FrameStat[frameno].m_encPSNR[0] = float(result.psnr[0]);
+  encTopStat.FrameStat[frameno].m_encPSNR[1] = float(result.psnr[1]);
+  encTopStat.FrameStat[frameno].m_encPSNR[2] = float(result.psnr[2]);
+  encTopStat.FrameStat[frameno].m_encPSNR[3] = float(result.psnr[0]* YUV_FACTOR + result.psnr[1] + result.psnr[2]) / (YUV_FACTOR+2);
+  encTopStat.FrameStat[frameno].m_encSSIM[0] = float(result.MSSSIM[0]);
+  encTopStat.FrameStat[frameno].m_encSSIM[1] = float(result.MSSSIM[1]);
+  encTopStat.FrameStat[frameno].m_encSSIM[2] = float(result.MSSSIM[2]);
+  encTopStat.FrameStat[frameno].m_encSSIM[3] = float(result.MSSSIM[0] * YUV_FACTOR + result.MSSSIM[1] + result.MSSSIM[2]) / (YUV_FACTOR + 2);
+  encTopStat.FrameStat[frameno].m_encMSE[0] = float(result.MSEyuvframe[0]);
+  encTopStat.FrameStat[frameno].m_encMSE[1] = float(result.MSEyuvframe[1]);
+  encTopStat.FrameStat[frameno].m_encMSE[2] = float(result.MSEyuvframe[2]);
+  encTopStat.FrameStat[frameno].m_encMSE[3] = float(result.MSEyuvframe[0] * YUV_FACTOR + result.MSEyuvframe[1] + result.MSEyuvframe[2]) / (YUV_FACTOR + 2);
+#endif
+
 #if EXTENSION_360_VIDEO
   m_ext360.addResult(m_gcAnalyzeAll);
 #endif
@@ -2488,8 +2637,11 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
   }
 
 #if ADAPTIVE_QP_SELECTION
-  printf("POC %4d TId: %1d ( %c-SLICE, nQP %d QP %d ) %10d bits",
+  // Derek
+  printf("POC %4d GOPid %4d Framelevel %4d TId: %1d ( %c-SLICE, nQP %d QP %d ) %10d bits",
          pcSlice->getPOC(),
+         m_pcSliceEncoder->getGopID(),
+         m_pcCfg->getUseRateCtrl() ? (m_pcRateCtrl->getRCSeq()->getGOPID2Level(m_pcSliceEncoder->getGopID())) : 0,
          pcSlice->getTLayer(),
          c,
          pcSlice->getSliceQpBase(),
@@ -2515,7 +2667,9 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
            reinterpret_cast<uint8_t *>(&result.psnr[i]) + sizeof(result.psnr[i]),
            reinterpret_cast<uint8_t *>(&xPsnr[i]));
     }
-    printf(" [xY %16" PRIx64 " xU %16" PRIx64 " xv %16" PRIx64 "]", xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
+    // Derek Fix
+    //printf(" [xY %16" PRIx64 " xU %16" PRIx64 " xv %16" PRIx64 "]", xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
+    printf(" [xY %16llx" " xU %16llx" " xv %16llx" "]", xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
   }
 
 #if JVET_F0064_MSSSIM
@@ -2550,6 +2704,7 @@ Void TEncGOP::xCalculateAddPSNR( TComPic* pcPic, TComPicYuv* pcPicD, const Acces
     }
     printf("]");
   }
+  printf("\n"); // Derek
 
   cscd.destroy();
 }
@@ -2933,7 +3088,9 @@ Void TEncGOP::xCalculateInterlacedAddPSNR( TComPic* pcPicOrgFirstField, TComPic*
            reinterpret_cast<uint8_t *>(&result.psnr[i]) + sizeof(result.psnr[i]),
            reinterpret_cast<uint8_t *>(&xPsnr[i]));
     }
-    printf(" [xY %16" PRIx64 " xU %16" PRIx64 " xv %16" PRIx64 "]", xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
+    // Derek Fix
+    //printf(" [xY %16" PRIx64 " xU %16" PRIx64 " xv %16" PRIx64 "]", xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
+    printf(" [xY %16llx" " xU %16llx" " xv %16llx" "]", xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
   }
 
 #if JVET_F0064_MSSSIM

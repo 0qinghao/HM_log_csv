@@ -432,6 +432,8 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
   m_absZIdxInCtu       = 0;
   m_dTotalCost         = MAX_DOUBLE;
   m_uiTotalDistortion  = 0;
+  m_uiTotalDistortionY = 0;
+  m_uiTotalDistortionUV = 0;
   m_uiTotalBits        = 0;
   m_uiTotalBins        = 0;
   m_uiNumPartition     = pcPic->getNumPartitionsInCtu();
@@ -526,6 +528,8 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 {
   m_dTotalCost         = MAX_DOUBLE;
   m_uiTotalDistortion  = 0;
+  m_uiTotalDistortionY = 0;
+  m_uiTotalDistortionUV = 0;
   m_uiTotalBits        = 0;
   m_uiTotalBins        = 0;
 
@@ -612,6 +616,8 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
 
   m_dTotalCost         = MAX_DOUBLE;
   m_uiTotalDistortion  = 0;
+  m_uiTotalDistortionY = 0;
+  m_uiTotalDistortionUV = 0;
   m_uiTotalBits        = 0;
   m_uiTotalBins        = 0;
   m_uiNumPartition     = pcCU->getTotalNumPart() >> 2;
@@ -824,6 +830,8 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 
   m_dTotalCost         += pcCU->getTotalCost();
   m_uiTotalDistortion  += pcCU->getTotalDistortion();
+  m_uiTotalDistortionY  += pcCU->getTotalDistortionY();
+  m_uiTotalDistortionUV  += pcCU->getTotalDistortionUV();
   m_uiTotalBits        += pcCU->getTotalBits();
 
   UInt uiOffset         = pcCU->getTotalNumPart()*uiPartUnitIdx;
@@ -911,6 +919,8 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 
   pCtu->getTotalCost()       = m_dTotalCost;
   pCtu->getTotalDistortion() = m_uiTotalDistortion;
+  pCtu->getTotalDistortionY() = m_uiTotalDistortionY;
+  pCtu->getTotalDistortionUV() = m_uiTotalDistortionUV;
   pCtu->getTotalBits()       = m_uiTotalBits;
 
   Int iSizeInUchar  = sizeof( UChar ) * m_uiNumPartition;

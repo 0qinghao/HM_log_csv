@@ -448,6 +448,13 @@ protected:
   Bool      m_RCCpbSaturationEnabled;             ///< enable target bits saturation to avoid CPB overflow and underflow
   UInt      m_RCCpbSize;                          ///< CPB size
   Double    m_RCInitialCpbFullness;               ///< initial CPB fullness 
+
+  Bool      m_CRCEnable;                          ///< enable custom rate control or not
+  Bool      m_CRCCtuEnable;                       ///< enable custom ctu-level rate control or not
+  Bool      m_CRCCpbEnable;                       ///< enable custom rate control CPB check or not
+  Int       m_CRCTargetBitrate;                   ///< target bitrate when custom rate control is enabled
+  Int       m_CRCInitialQP;                       ///< inital QP for cunstom rate control
+
   ScalingListMode m_useScalingListId;                         ///< using quantization matrix
   std::string m_scalingListFileName;                          ///< quantization matrix file name
 

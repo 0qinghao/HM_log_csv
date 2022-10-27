@@ -1352,6 +1352,7 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
   for( Int iSubSet = iLastScanSet; iSubSet >= 0; iSubSet-- )
   {
     Int numNonZero = 0;
+    Int NonZeroSum = 0;
     Int  iSubPos   = iSubSet << MLS_CG_SIZE;
     uiGoRiceParam  = currentGolombRiceStatistic / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
     Bool updateGolombRiceStatistics = bUseGolombRiceParameterAdaptation; //leave the statistics at 0 when not using the adaptation system
@@ -1409,6 +1410,8 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
         {
           absCoeff[ numNonZero ] = Int(abs( pcCoef[ uiBlkPos ] ));
           coeffSigns = 2 * coeffSigns + ( pcCoef[ uiBlkPos ] < 0 );
+          //NonZeroSum += (uiBlkPos != 0) ? absCoeff[numNonZero] : 0;
+          NonZeroSum += absCoeff[numNonZero];
           numNonZero++;
           if( lastNZPosInCG == -1 )
           {
@@ -1422,6 +1425,16 @@ Void TEncSbac::codeCoeffNxN( TComTU &rTu, TCoeff* pcCoef, const ComponentID comp
     {
       iScanPosSig = iSubPos - 1;
     }
+
+#if CUSTOM_RC
+    if (encTopStat.m_isTrial == 0)
+    {
+        if (pcCU->isIntra(uiAbsPartIdx))
+            encTopStat.m_CoeffNum_I += NonZeroSum;// numNonZero;
+        else
+            encTopStat.m_CoeffNum_P += NonZeroSum; // numNonZero;
+    }
+#endif
 
     if( numNonZero > 0 )
     {

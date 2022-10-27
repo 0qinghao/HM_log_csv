@@ -800,6 +800,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     const UInt firstCtuRsAddrOfTile = pcPic->getPicSym()->getTComTile(pcPic->getPicSym()->getTileIdxMap(ctuRsAddr))->getFirstCtuRsAddr();
     const UInt tileXPosInCtus = firstCtuRsAddrOfTile % frameWidthInCtus;
     const UInt ctuXPosInCtus  = ctuRsAddr % frameWidthInCtus;
+    const UInt ctuYPosInCtus  = ctuRsAddr / frameWidthInCtus;
     
     if (ctuRsAddr == firstCtuRsAddrOfTile)
     {
@@ -874,10 +875,75 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
       pCtu->getSlice()->setSliceQpBase( estQP );
 #endif
     }
+#if CUSTOM_RC
+    if (encTopCRC.CRCEn)
+    {
+        Double estLambda = encTopCRC.CRCPicLambda;
+        if (encTopCRC.CRCCtuEn)
+        {
+            const int frameno = encTopStat.m_encFrameNum;
+            const int frame_sw = frameno & 0x1;
+
+            if (ctuTsAddr == 180)
+                ctuTsAddr = ctuTsAddr;
+
+        #if CTU_WEIGHT==1
+            int deltaL = encTopStat.CtuText[frame_sw][ctuRsAddr].hipa_weight;
+        #elif CTU_WEIGHT==2
+            int deltaL = encTopStat.CtuText[frame_sw][ctuRsAddr].lumo_weight;
+        #elif CTU_WEIGHT==3
+            int deltaL = encTopStat.CtuText[frame_sw][ctuRsAddr].var_weight;
+        #endif
+            encTopCRC.CRCCtuLambdaIdx = encTopCRC.CRCLambdaIdx + deltaL;
+            encTopCRC.CRCCtuLambda = estLambda = encTopCRC.CRCLambdaTBL[encTopCRC.CRCCtuLambdaIdx];
+
+            int estQP = encTopCRC.CRCCtuLambdaIdx / 4;
+            encTopCRC.CRCCtuQP = estQP;
+            //encTopCRC.CRCCtuQP = Clip3(encTopCRC.CRCPicQP - 4, encTopCRC.CRCPicQP + 4, estQP);
+            encTopCRC.CRCCtuQP = Clip3(10, 51, encTopCRC.CRCCtuQP);
+
+            //int totalCtuInSlice = boundingCtuTsAddr - startCtuTsAddr;
+            //int CtuLeftNum = boundingCtuTsAddr - ctuTsAddr;
+            //CRC_Estimate_CTU_Lambda(pcPic, totalCtuInSlice, CtuLeftNum);
+            //estLambda = encTopCRC.CRCCtuLambda;
+        }
+        m_pcRdCost->setLambda(estLambda, pcSlice->getSPS()->getBitDepths());
+        //m_pcRateCtrl->setRCQP(encTopCRC.CRCCtuQP);
+
+        if (encTopCRC.CRCCtuEn)
+        {
+            const int frameno = encTopStat.m_encFrameNum;
+            Double chromaLambda[2] = { estLambda, estLambda };
+        #if CTU_WEIGHT==1
+            if (encTopStat.FrameStat[frameno].blk_weight_c[0] != 0)
+                chromaLambda[0] = estLambda * encTopStat.FrameStat[frameno].blk_weight_c[0];
+            if (encTopStat.FrameStat[frameno].blk_weight_c[1] != 0)
+                chromaLambda[1] = estLambda * encTopStat.FrameStat[frameno].blk_weight_c[1];
+        #endif
+            const Double lambdaArray[MAX_NUM_COMPONENT] = { estLambda, chromaLambda[0], chromaLambda[1] };
+            m_pcTrQuant->setLambdas(lambdaArray);
+        }
+        else
+        {
+        #if RDOQ_CHROMA_LAMBDA
+            // set lambda for RDOQ
+            const Double chromaLambda = estLambda / m_pcRdCost->getChromaWeight();
+            const Double lambdaArray[MAX_NUM_COMPONENT] = { estLambda, chromaLambda, chromaLambda };
+            m_pcTrQuant->setLambdas(lambdaArray);
+        #else
+            m_pcTrQuant->setLambda(estLambda);
+        #endif
+        }
+    }
+    encTopStat.m_isTrial = 1;
+#endif
+
+    // Derek debug
+    if (encTopStat.m_encFrameNum == 1 && ctuXPosInCtus * 32 == 512 && ctuYPosInCtus * 32 == 160)
+        ctuTsAddr = ctuTsAddr;
 
     // run CTU trial encoder
     m_pcCuEncoder->compressCtu( pCtu );
-
 
     // All CTU decisions have now been made. Restore entropy coder to an initial stage, ready to make a true encode,
     // which will result in the state of the contexts being correct. It will also count up the number of bits coded,
@@ -890,8 +956,18 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
     pRDSbacCoder->setBinsCoded( 0 );
 
     // encode CTU and calculate the true bit counters.
+    // this will update context for next trial encode RD-Cost Calc ?
+#if CUSTOM_RC
+    const int frame_sw = encTopStat.m_encFrameNum & 0x1;
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuLambdaIdx = encTopCRC.CRCCtuLambdaIdx;
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuLambda = encTopCRC.CRCCtuLambda;
+    //encTopStat.CtuText[frame_sw][ctuRsAddr].m_TargetBits = encTopCRC.CRCCtuTargetBits;
+    //encTopStat.CtuText[frame_sw][ctuRsAddr].m_CPMode = encTopCRC.CRCCtuCompMode;
+    //encTopCRC.CRCCtuActualBits = pCtu->getTotalBits();
+    encTopCRC.CRCCtuAccumBits += pCtu->getTotalBits();
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuLeftBits = encTopCRC.CRCPicTargetBits - encTopCRC.CRCCtuAccumBits;
+#endif
     m_pcCuEncoder->encodeCtu( pCtu );
-
 
     pRDSbacCoder->setBinCountingEnableFlag( false );
 
@@ -1074,6 +1150,28 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
       }
     }
 
+#if CUSTOM_RC
+    const int frame_sw = encTopStat.m_encFrameNum & 0x1;
+    encTopStat.m_isTrial = 0;
+    encTopStat.m_HeaderBits = 0;
+    encTopStat.m_DataBits = 0;
+    encTopStat.m_BitCnts = m_pcEntropyCoder->getNumberOfWrittenBits();
+    // Get Non Zero Coeffs
+    /*for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+    {
+        int isChroma = comp > 0;
+        const ComponentID compID = ComponentID(comp);
+        TCoeff* pCoeff = pCtu->getCoeff(compID);
+        const TComSPS& sps = *(pCtu->getSlice()->getSPS());
+        const UInt uiMaxCUWidth = sps.getMaxCUWidth() >> isChroma;
+        const UInt uiMaxNumCoeff = uiMaxCUWidth * uiMaxCUWidth;
+
+        for (Int i = 0; i < uiMaxNumCoeff; i++)
+            encTopStat.CtuText[frame_sw][ctuRsAddr].m_NonZeroCoeffNum += (pCoeff[i] != 0);
+    }*/
+    encTopStat.m_CoeffNum_I = 0;
+    encTopStat.m_CoeffNum_P = 0;
+#endif
 
     if ( pcSlice->getSPS()->getUseSAO() )
     {
@@ -1115,6 +1213,10 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
 #if ENC_DEC_TRACE
     g_bJustDoIt = g_bEncDecTraceEnable;
 #endif
+    // Derek debug
+    //if (encTopStat.m_encFrameNum == 1 && ctuRsAddr == 1)
+    if (encTopStat.m_encFrameNum == 1 && ctuXPosInCtus*32 == 512 && ctuYPosInCtus*32 == 160)
+        ctuTsAddr = ctuTsAddr;
       m_pcCuEncoder->encodeCtu( pCtu );
 #if ENC_DEC_TRACE
     g_bJustDoIt = g_bEncDecTraceDisable;
@@ -1144,6 +1246,65 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
         pcSlice->addSubstreamSize( (pcSubstreams[uiSubStrm].getNumberOfWrittenBits() >> 3) + pcSubstreams[uiSubStrm].countStartCodeEmulations() );
       }
     }
+
+#if CUSTOM_RC
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_TotalBits = pCtu->getTotalBits();
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_RdCost = Int(pCtu->getTotalCost() + 0.5);
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_Dist[0] = pCtu->getTotalDistortionY();
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_Dist[1] = pCtu->getTotalDistortionUV();
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_Dist[2] = pCtu->getTotalDistortion();
+    // Derek Avg QP
+    int PartIdxNum = 0;
+    int QPSum = 0;
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_maxQP = 0;
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_minQP = 0xFF;
+    for (int i = 0; i < pCtu->getTotalNumPart(); i++)
+    {
+        if ((!pCtu->isSkipped(i)) && pCtu->getQP(i))
+        {
+            int qp_val = pCtu->getQP(i);
+            PartIdxNum++;
+            QPSum += qp_val;
+            encTopStat.CtuText[frame_sw][ctuRsAddr].m_maxQP = max(qp_val, encTopStat.CtuText[frame_sw][ctuRsAddr].m_maxQP);
+            encTopStat.CtuText[frame_sw][ctuRsAddr].m_minQP = min(qp_val, encTopStat.CtuText[frame_sw][ctuRsAddr].m_minQP);
+        }
+    }
+    if (PartIdxNum != 0)
+        encTopStat.CtuText[frame_sw][ctuRsAddr].m_avgQP = (QPSum + (PartIdxNum >> 1)) / PartIdxNum;
+    else
+    {
+        encTopStat.CtuText[frame_sw][ctuRsAddr].m_avgQP = 0;
+        encTopStat.CtuText[frame_sw][ctuRsAddr].m_maxQP = 0;
+        encTopStat.CtuText[frame_sw][ctuRsAddr].m_minQP = 0xFF;
+    }
+    //encTopStat.CtuText[frame_sw][ctuRsAddr].m_QP = encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuLambdaIdx / 4;
+
+    //if (encTopStat.m_encFrameNum == 2 && pCtu->getCUPelX() == 576 && pCtu->getCUPelY() == 0)
+    //    ctuTsAddr = ctuTsAddr;
+
+    encTopStat.m_HeaderBits += (m_pcEntropyCoder->getNumberOfWrittenBits() - encTopStat.m_BitCnts);
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_ctuHeaderBits = encTopStat.m_HeaderBits;
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_ctuDataBits = encTopStat.m_DataBits;
+
+    //assert(encTopStat.m_CoeffNum == encTopStat.CtuText[frame_sw][ctuRsAddr].m_NonZeroCoeffNum);
+    const int frameno = encTopStat.m_encFrameNum;
+    encTopStat.CtuText[frame_sw][ctuRsAddr].m_NonZeroCoeffNum = encTopStat.m_CoeffNum_I + encTopStat.m_CoeffNum_P;
+    encTopStat.FrameStat[frameno].m_TotalNonZeroNum_I += encTopStat.m_CoeffNum_I;
+    encTopStat.FrameStat[frameno].m_TotalNonZeroNum_P += encTopStat.m_CoeffNum_P;
+    //encTopStat.FrameStat[frameno].m_MotionBits[encTopStat.CtuText[frame_sw][ctuRsAddr].m_motion] += encTopStat.CtuText[frame_sw][ctuRsAddr].m_TotalBits;
+
+    if (encTopCRC.CRCEn && encTopCRC.CRCCtuEn)
+    {
+        //int blk8x8Cnt = encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuType[1] + encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuType[2]; // 2=Intra 1=Inter 0=Skip
+        //encTopCRC.CRCCtuAvgLambdaIdx += encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuLambdaIdx * blk8x8Cnt;
+        //encTopCRC.CRCCtuAvgQP += encTopCRC.CRCCtuQP * blk8x8Cnt;
+        //encTopCRC.CRCCtuValidCnt += blk8x8Cnt;
+
+        encTopCRC.CRCCtuAvgLambdaIdx += encTopStat.CtuText[frame_sw][ctuRsAddr].m_CtuLambdaIdx;
+        encTopCRC.CRCCtuValidCnt++;
+    }
+#endif
+
   } // CTU-loop
 
   if( depSliceSegmentsEnabled )

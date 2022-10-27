@@ -50,6 +50,9 @@
     <ClCompile Include="..\..\source\Lib\TLibDecoder\TDecConformance.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\Lib\DecStat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\Lib\TLibDecoder\AnnexBread.h">

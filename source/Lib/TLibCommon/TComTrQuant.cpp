@@ -1471,6 +1471,10 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
   RDPCMMode rdpcmMode = RDPCM_OFF;
   rdpcmNxN( rTu, compID, pcResidual, uiStride, cQP, rpcCoeff, uiAbsSum, rdpcmMode );
 
+  // derek debug
+  if (pcCU->getSlice()->getSliceType() != I_SLICE && compID == 0 && uiWidth == 4)
+      uiAbsSum = uiAbsSum;
+
   if (rdpcmMode == RDPCM_OFF)
   {
     uiAbsSum = 0;

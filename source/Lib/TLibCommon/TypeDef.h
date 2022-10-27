@@ -53,6 +53,19 @@
 // Debugging
 // ====================================================================================================================
 
+#define RCSTAT_COM  1
+#define YUV_OUT 0   // derek
+#define SMD5    0   // derek
+#define TU_CU   0   // derek CU32TU32
+#define TU08_V0 0   // derek
+#define TU16_V0 0   // derek CU16
+#define TU16_V1 0   // derek CU32
+#define MOL_TU8 0   // derek, MOL minTU in P is 8x8, while in I is 4x4
+#define CHK_TX_QP   1   // Check max/min/sliceQP range
+#define CHK_RDO_HAD 0   // derek
+#define CALC_FLICK  1
+#define LOOP_INPUT  1
+
 #define DEBUG_STRING                                      0 ///< When enabled, prints out final decision debug info at encoder and decoder
 #define DEBUG_ENCODER_SEARCH_BINS                         0 ///< When enabled, prints out each bin as it is coded during encoder search
 #define DEBUG_CABAC_BINS                                  0 ///< When enabled, prints out each bin as it is coded during final encode and decode
@@ -115,7 +128,7 @@
 
 #define REDUCED_ENCODER_MEMORY                            1 ///< When 1, the encoder will allocate TComPic memory when required and release it when no longer required.
 
-#define ADAPTIVE_QP_SELECTION                             1 ///< G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
+#define ADAPTIVE_QP_SELECTION                             0 ///< G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
 
 #define AMP_ENC_SPEEDUP                                   1 ///< encoder only speed-up by AMP mode skipping
 #if AMP_ENC_SPEEDUP

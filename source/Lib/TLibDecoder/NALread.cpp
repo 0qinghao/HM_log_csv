@@ -41,6 +41,7 @@
 #include <algorithm>
 #include <ostream>
 
+#include "TDecTop.h"
 #include "NALread.h"
 #include "TLibCommon/NAL.h"
 #include "TLibCommon/TComBitStream.h"
@@ -83,7 +84,7 @@ static Void convertPayloadToRBSP(vector<uint8_t>& nalUnitBuf, TComInputBitstream
     zeroCount = (*it_read == 0x00) ? zeroCount+1 : 0;
     *it_write = *it_read;
   }
-  assert(zeroCount == 0);
+  //assert(zeroCount == 0); // Derek, prevent last bytes are zero for alignment
 
   if (isVclNalUnit)
   {
@@ -176,6 +177,9 @@ Void read(InputNALUnit& nalu)
 {
   TComInputBitstream &bitstream = nalu.getBitstream();
   vector<uint8_t>& nalUnitBuf=bitstream.getFifo();
+#if RC_STAT_EN
+  decTopStat.m_NALUFullByte = nalUnitBuf.size();
+#endif
   // perform anti-emulation prevention
   convertPayloadToRBSP(nalUnitBuf, &bitstream, (nalUnitBuf[0] & 64) == 0);
   bitstream.resetToStart();
